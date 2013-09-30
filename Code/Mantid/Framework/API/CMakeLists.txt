@@ -106,6 +106,7 @@ set ( SRC_FILES
 	src/WorkspaceFactory.cpp
 	src/WorkspaceGroup.cpp
 	src/WorkspaceHistory.cpp
+	src/WorkspaceListProperty.cpp
 	src/WorkspaceOpOverloads.cpp
 	src/WorkspaceProperty.cpp
 )
@@ -259,6 +260,7 @@ set ( INC_FILES
 	inc/MantidAPI/WorkspaceHistory.h
 	inc/MantidAPI/WorkspaceIterator.h
 	inc/MantidAPI/WorkspaceIteratorCode.h
+	inc/MantidAPI/WorkspaceListProperty.h
 	inc/MantidAPI/WorkspaceOpOverloads.h
 	inc/MantidAPI/WorkspaceProperty.h
 	inc/MantidAPI/WorkspaceValidators.h
@@ -288,9 +290,9 @@ set ( TEST_FILES
 	FilePropertyTest.h
 	FrameworkManagerTest.h
 	FuncMinimizerFactoryTest.h
-  FunctionAttributeTest.h
-  FunctionDomainTest.h
-  FunctionFactoryTest.h
+	FunctionAttributeTest.h
+	FunctionDomainTest.h
+	FunctionFactoryTest.h
 	FunctionPropertyTest.h
 	FunctionTest.h
 	FunctionValuesTest.h
@@ -305,7 +307,7 @@ set ( TEST_FILES
 	IncreasingAxisValidatorTest.h
 	InstrumentDataServiceTest.h
 	LiveListenerFactoryTest.h
-        LogManagerTest.h
+	LogManagerTest.h
 	MDGeometryTest.h
 	MatrixWorkspaceMDIteratorTest.h
 	MemoryManagerTest.h
@@ -331,6 +333,7 @@ set ( TEST_FILES
 	WorkspaceFactoryTest.h
 	WorkspaceGroupTest.h
 	WorkspaceHistoryTest.h
+	WorkspaceListPropertyTest.h
 	WorkspaceOpOverloadsTest.h
 	WorkspacePropertyTest.h
 )

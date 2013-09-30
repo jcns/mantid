@@ -175,6 +175,12 @@ void toValue(const std::string& strvalue, std::vector<T>& value)
 }
 
 template <typename T>
+void toValue(const std::string& strvalue, std::vector<boost::shared_ptr<T> >&)
+{
+  throw boost::bad_lexical_cast();
+}
+
+template <typename T>
 void toValue(const std::string& strvalue, std::vector<std::vector<T> >& value, const std::string & outerDelimiter = ",", 
                      const std::string & innerDelimiter = "+")
 {
