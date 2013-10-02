@@ -62,7 +62,7 @@ namespace API
     *  @param validator :: The (optional) validator to use for this property
     *  @throw std::out_of_range if the direction argument is not a member of the Direction enum (i.e. 0-2)
     */
-    explicit WorkspaceListProperty( const std::string &name, const std::string &wsNames, const unsigned int direction,
+    explicit WorkspaceListProperty( const std::string &name, const std::string &wsNames, const unsigned int direction=Mantid::Kernel::Direction::Input,
                                 Mantid::Kernel::IValidator_sptr validator = Mantid::Kernel::IValidator_sptr(new Kernel::NullValidator)) :
       Mantid::Kernel::PropertyWithValue<WorkspacePropertyListType>( name, WorkspacePropertyListType(0), validator, direction ),
       m_optional(PropertyMode::Mandatory), m_workspaceNames(0)
@@ -92,7 +92,7 @@ namespace API
     /// Copy constructor, the default name stored in the new object is the same as the default name from the original object
     WorkspaceListProperty( const WorkspaceListProperty& right ) :
     Kernel::PropertyWithValue< WorkspacePropertyListType >( right ),
-    m_optional(right.m_optional)
+    m_optional(right.m_optional), m_workspaceNames(right.m_workspaceNames)
     {
     }
 
