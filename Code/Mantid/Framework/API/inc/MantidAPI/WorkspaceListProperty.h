@@ -44,17 +44,6 @@ namespace Mantid
       typedef std::vector<boost::shared_ptr<TYPE> > WorkspacePropertyListType;
       typedef Kernel::PropertyWithValue<WorkspacePropertyListType> SuperClass;
 
-      /**
-       * Helper method to split a comma separated string into a vector of strings.
-       */
-      std::vector<std::string> namesToVector(std::string names)
-      {
-        names.erase(std::remove_if(names.begin(), names.end(), (int (*)(int))std::isspace), names.end());
-        std::vector<std::string> splitNames;
-        boost::split(splitNames, names, boost::is_any_of(","));
-        return splitNames;
-      }
-
       /** Constructor.
        *  Sets the property and workspace names but initialises the workspace pointers to null.
        *  @param name :: The name to assign to the property
@@ -99,7 +88,14 @@ namespace Mantid
       }
     }
 
-
+    /**
+     * WorkspaceListProperty
+     * @param name: Name of the property
+     * @param workspaces: Workspaces to hold
+     * @param direction : Property directoin
+     * @param optional : Optional or mandatory property
+     * @param validator : Validator to use
+     */
     explicit WorkspaceListProperty( const std::string &name, const WorkspacePropertyListType workspaces, const unsigned int direction=Mantid::Kernel::Direction::Input, const PropertyMode::Type optional = PropertyMode::Mandatory,
                                 Mantid::Kernel::IValidator_sptr validator = Mantid::Kernel::IValidator_sptr(new Kernel::NullValidator)) :
       Mantid::Kernel::PropertyWithValue<WorkspacePropertyListType>( name, WorkspacePropertyListType(0), validator, direction ),
@@ -117,6 +113,22 @@ namespace Mantid
     {
     }
 
+    /**
+     * Assignment overload
+     * @param right : rhs workspace.
+     */
+    WorkspaceListProperty& operator=(const WorkspaceListProperty& right)
+    {
+      if(&right != this)
+      {
+        SuperClass::operator=(right);
+        m_workspaceNames = right.m_workspaceNames;
+        m_optional = right.m_optional;
+        syncWorkspaces();
+      }
+      return *this;
+    }
+
     /** Set the name of the workspace.
     *  Also tries to retrieve it from the AnalysisDataService.
     *  @param value :: The new name for the workspace
@@ -126,51 +138,6 @@ namespace Mantid
     {
       m_workspaceNames = namesToVector(value);
       return syncWorkspaces();
-    }
-
-    std::string syncWorkspaces()
-    {
-      // Try and get the workspace from the ADS, but don't worry if we can't
-      WorkspacePropertyListType temp;
-      for( auto it = m_workspaceNames.begin(); it != m_workspaceNames.end(); ++it)
-      {
-        try
-        {
-          auto name = *it;
-          auto ws = AnalysisDataService::Instance().retrieve(*it);
-          temp.push_back(AnalysisDataService::Instance().retrieveWS<TYPE>(*it));
-        }
-        catch (Kernel::Exception::NotFoundError &)
-        {
-          // Set to null property if not found
-          this->clear();
-          //the workspace name is not reset here, however.
-        }
-      }
-      SuperClass::m_value = temp;
-      return isValid();
-    }
-
-    std::string missingWorkspaceErrorMessage(const std::string& wsName) const
-    {
-      std::stringstream stream;
-      stream << "Workspace called '" << wsName << "' is not in the Workspace List and is unknown to Mantid";
-      return stream.str();
-    }
-
-    void syncNames() const
-    {
-      std::vector<std::string> temp;
-      for(auto it = SuperClass::m_value.begin(); it != SuperClass::m_value.end(); ++it)
-      {
-        const std::string wsName = (*it)->name();
-        if(!AnalysisDataService::Instance().doesExist(wsName))
-        {
-          throw std::invalid_argument(missingWorkspaceErrorMessage(wsName));
-        }
-        temp.push_back( (*it)->name() );
-      }
-      m_workspaceNames = temp;
     }
 
     /** Checks whether the entered workspaces are valid.
@@ -188,25 +155,40 @@ namespace Mantid
       {
         for(auto it = m_workspaceNames.begin(); it != m_workspaceNames.end(); ++it)
         {
-          try
+          const std::string wsName = *it;
+          if(!AnalysisDataService::Instance().doesExist(wsName))
           {
-            auto wksp = AnalysisDataService::Instance().retrieve(*it);
-          }
-          catch( Kernel::Exception::NotFoundError &)
-          {
-            return missingWorkspaceErrorMessage(*it);
+            /*
+             * If this property is being used with the optional flag, and the arguments look like the default ones. then continue.
+             */
+            if(this->isOptional() && m_workspaceNames.size() == 1 && wsName.empty())
+            {
+              continue;
+            }
+            else
+            {
+              return missingWorkspaceErrorMessage(*it);
+            }
           }
         }
       }
-      // Call superclass method to access any attached validators (which do their own logging)
-      return Kernel::PropertyWithValue<WorkspacePropertyListType >::isValid();
+
+      // Run the validator on each workspace held. This must be done after the point that we have established that the workspaces exist.
+      for(int i = 0; i < SuperClass::m_value.size(); ++i)
+      {
+        error = SuperClass::m_validator->isValid(SuperClass::m_value[i]);
+        if(!error.empty())
+        {
+          return error;
+        }
+      }
+      return error;
     }
 
-    void clear()
-    {
-      SuperClass::m_value = WorkspacePropertyListType(0);
-    }
-
+    /**
+     * Overriden value getter. Export contents as a comma separated string of workspaces.
+     * @return Comma separated string of workspace names.
+     */
     virtual std::string value() const
     {
       this->syncNames();
@@ -235,11 +217,87 @@ namespace Mantid
       return m_workspaceNames;
     }
 
+    /**
+     * Destructor
+     */
     virtual ~WorkspaceListProperty()
     {
     }
 
   private:
+
+    /**
+     * Sync workspaces. Using the collection of workspaces, record/overwrite the workspace names.
+     */
+    std::string syncWorkspaces()
+    {
+      // Try and get the workspace from the ADS, but don't worry if we can't
+      WorkspacePropertyListType temp;
+      for( auto it = m_workspaceNames.begin(); it != m_workspaceNames.end(); ++it)
+      {
+        try
+        {
+          temp.push_back(AnalysisDataService::Instance().retrieveWS<TYPE>(*it));
+        }
+        catch (Kernel::Exception::NotFoundError &)
+        {
+          // Set to null property if not found
+          this->clear();
+          //the workspace name is not reset here, however.
+        }
+      }
+      SuperClass::m_value = temp;
+      return isValid();
+    }
+
+    /**
+     * Format an error message for a missing workspace with the provided name
+     * @param wsName: Name of the workspace which is missing from the ADS.
+     */
+    std::string missingWorkspaceErrorMessage(const std::string& wsName) const
+    {
+      std::stringstream stream;
+      stream << "Workspace called '" << wsName << "' is not in the Workspace List and is unknown to Mantid";
+      return stream.str();
+    }
+
+    /**
+     * Using the collection of workspaces, sync the internal list of workspace names.
+     */
+    void syncNames() const
+    {
+      std::vector<std::string> temp;
+      for(auto it = SuperClass::m_value.begin(); it != SuperClass::m_value.end(); ++it)
+      {
+        const std::string wsName = (*it)->name();
+        // If the user has entered a workspace then it should exist in the ADS. This will get hit whether the property is optional or not.
+        if(!AnalysisDataService::Instance().doesExist(wsName))
+        {
+          throw std::invalid_argument(missingWorkspaceErrorMessage(wsName));
+        }
+        temp.push_back( (*it)->name() );
+      }
+      m_workspaceNames = temp;
+    }
+
+    void clear()
+    {
+      SuperClass::m_value = WorkspacePropertyListType(0);
+    }
+
+    /**
+     * Helper method to split a comma separated string into a vector of strings.
+     * @param Comma separated string to split up.
+     * @return vector of strings.
+     */
+    std::vector<std::string> namesToVector(std::string names)
+    {
+      names.erase(std::remove_if(names.begin(), names.end(), (int (*)(int))std::isspace), names.end());
+      std::vector<std::string> splitNames;
+      boost::split(splitNames, names, boost::is_any_of(","));
+      return splitNames;
+    }
+
     /// Flag indicating whether the type is optional or not.
     PropertyMode::Type m_optional;
     /// Keys to the workspaces in the ADS

@@ -506,7 +506,8 @@ protected:
   TYPE m_value;
   ///the property's default value which is also its initial value
   const TYPE m_initialValue;
-
+  /// Visitor validator class
+  IValidator_sptr m_validator;
 private:
   /**
    * Set the value of the property via a reference to another property.  
@@ -565,9 +566,6 @@ private:
       UNUSED_ARG(value);
       return "Attempt to assign object of type DataItem to property (" + name() + ") of incorrect type";
     }
-
-  /// Visitor validator class
-  IValidator_sptr m_validator;
 
   /// Static reference to the logger class
   static Logger& g_log;
