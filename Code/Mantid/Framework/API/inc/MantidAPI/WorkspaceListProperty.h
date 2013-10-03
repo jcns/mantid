@@ -41,8 +41,8 @@ namespace Mantid
     public:
 
       /// Typedef the value type of this property with value.
-      typedef std::vector<boost::shared_ptr<TYPE> > WorkspacePropertyListType;
-      typedef Kernel::PropertyWithValue<WorkspacePropertyListType> SuperClass;
+      typedef std::vector<boost::shared_ptr<TYPE> > WorkspaceListPropertyType;
+      typedef Kernel::PropertyWithValue<WorkspaceListPropertyType> SuperClass;
 
       /** Constructor.
        *  Sets the property and workspace names but initialises the workspace pointers to null.
@@ -54,13 +54,13 @@ namespace Mantid
        */
       explicit WorkspaceListProperty( const std::string &name, const std::string &wsNames, const unsigned int direction=Mantid::Kernel::Direction::Input,
                                 Mantid::Kernel::IValidator_sptr validator = Mantid::Kernel::IValidator_sptr(new Kernel::NullValidator)) :
-      Mantid::Kernel::PropertyWithValue<WorkspacePropertyListType>( name, WorkspacePropertyListType(0), validator, direction ),
+      Mantid::Kernel::PropertyWithValue<WorkspaceListPropertyType>( name, WorkspaceListPropertyType(0), validator, direction ),
       m_optional(PropertyMode::Mandatory), m_workspaceNames(0)
      // ,m_workspaceName( wsName ), m_initialWSName( wsName ), m_optional(PropertyMode::Mandatory), m_locking(LockMode::Lock)
     {
       m_workspaceNames = namesToVector(wsNames);
       const std::string errorMsg = syncWorkspaces();
-      if(!errorMsg.empty() && !this->isOptional())
+      if(!errorMsg.empty())
       {
         throw std::invalid_argument(errorMsg);
       }
@@ -77,12 +77,12 @@ namespace Mantid
     */
     explicit WorkspaceListProperty( const std::string &name, const std::string &wsNames, const unsigned int direction, const PropertyMode::Type optional,
                                 Mantid::Kernel::IValidator_sptr validator = Mantid::Kernel::IValidator_sptr(new Kernel::NullValidator)) :
-      Mantid::Kernel::PropertyWithValue<WorkspacePropertyListType>( name, WorkspacePropertyListType(0), validator, direction ),
+      Mantid::Kernel::PropertyWithValue<WorkspaceListPropertyType>( name, WorkspaceListPropertyType(0), validator, direction ),
       m_optional(optional), m_workspaceNames(0)
     {
       m_workspaceNames = namesToVector(wsNames);
       const std::string errorMsg = syncWorkspaces();
-      if(!errorMsg.empty() && !this->isOptional())
+      if(!errorMsg.empty())
       {
         throw std::invalid_argument(errorMsg);
       }
@@ -96,12 +96,12 @@ namespace Mantid
      * @param optional : Optional or mandatory property
      * @param validator : Validator to use
      */
-    explicit WorkspaceListProperty( const std::string &name, const WorkspacePropertyListType workspaces, const unsigned int direction=Mantid::Kernel::Direction::Input, const PropertyMode::Type optional = PropertyMode::Mandatory,
+    explicit WorkspaceListProperty( const std::string &name, const WorkspaceListPropertyType workspaces, const unsigned int direction=Mantid::Kernel::Direction::Input, const PropertyMode::Type optional = PropertyMode::Mandatory,
                                 Mantid::Kernel::IValidator_sptr validator = Mantid::Kernel::IValidator_sptr(new Kernel::NullValidator)) :
-      Mantid::Kernel::PropertyWithValue<WorkspacePropertyListType>( name, WorkspacePropertyListType(0), validator, direction ),
+      Mantid::Kernel::PropertyWithValue<WorkspaceListPropertyType>( name, WorkspaceListPropertyType(0), validator, direction ),
       m_optional(optional), m_workspaceNames(0)
     {
-      Kernel::PropertyWithValue< WorkspacePropertyListType>::m_value = workspaces;
+      Kernel::PropertyWithValue< WorkspaceListPropertyType>::m_value = workspaces;
       syncNames();
     }
 
@@ -115,7 +115,7 @@ namespace Mantid
 
     /**
      * Assignment overload
-     * @param right : rhs workspace.
+     * @param right : rhs workspace list property.
      */
     WorkspaceListProperty& operator=(const WorkspaceListProperty& right)
     {
@@ -128,6 +128,20 @@ namespace Mantid
       }
       return *this;
     }
+
+    /**
+     * Assignment overload
+     * @param right : rhs workspace list property type.
+     */
+    WorkspaceListPropertyType& operator=(const WorkspaceListPropertyType& right)
+    {
+      return SuperClass::operator=(right);
+    }
+
+    /**
+     * Clone operation.
+     */
+    WorkspaceListProperty<TYPE>* clone() const { return new WorkspaceListProperty<TYPE>(*this); }
 
     /** Set the name of the workspace.
     *  Also tries to retrieve it from the AnalysisDataService.
@@ -232,7 +246,7 @@ namespace Mantid
     std::string syncWorkspaces()
     {
       // Try and get the workspace from the ADS, but don't worry if we can't
-      WorkspacePropertyListType temp;
+      WorkspaceListPropertyType temp;
       for( auto it = m_workspaceNames.begin(); it != m_workspaceNames.end(); ++it)
       {
         try
@@ -282,7 +296,7 @@ namespace Mantid
 
     void clear()
     {
-      SuperClass::m_value = WorkspacePropertyListType(0);
+      SuperClass::m_value = WorkspaceListPropertyType(0);
     }
 
     /**

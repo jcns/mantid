@@ -24,6 +24,9 @@ class WorkspaceListPropertyTest : public CxxTest::TestSuite
 {
 private:
 
+  /**
+   * Helper class used for Mocking validators.
+   */
   class MockValidator : public Mantid::Kernel::IValidator
   {
   public:
@@ -33,6 +36,9 @@ private:
     MOCK_CONST_METHOD1(check, std::string(const boost::any&));
   };
 
+  /**
+   * Helper class. Algorithms are instances of IPropertyManager
+   */
   class MyAlgorithm: public Mantid::API::Algorithm
   {
   public:
@@ -96,18 +102,25 @@ public:
 
   void test_construction()
   {
+    AnalysisDataServiceImpl&  ads = AnalysisDataService::Instance();
+    ads.add("MyWorkspace1", boost::make_shared<WorkspaceTester>());
+    ads.add("MyWorkspace2", boost::make_shared<WorkspaceTester>());
+
     WorkspaceListProperty<Workspace> workspaceListProperty("MyWorkspaceProperty", "MyWorkspace1, MyWorkspace2", Direction::Input, PropertyMode::Optional);
     auto workspaceNames = workspaceListProperty.getWorkspaceNames();
     TS_ASSERT_EQUALS(2, workspaceNames.size());
     TS_ASSERT_EQUALS(workspaceNames.front(), "MyWorkspace1");
     TS_ASSERT_EQUALS(workspaceNames.back(), "MyWorkspace2");
     TS_ASSERT_EQUALS(workspaceListProperty.isOptional(), true)
+
+    ads.remove("MyWorkspace1");
+    ads.remove("MyWorkspace2");
   }
 
   void test_construct_throws_with_ws_outside_ads()
   {
     auto ws = boost::make_shared<WorkspaceTester>(); // Not in ADS
-    WorkspaceListProperty<Workspace>::WorkspacePropertyListType vec;
+    WorkspaceListProperty<Workspace>::WorkspaceListPropertyType vec;
     vec.push_back(ws);
 
     TS_ASSERT_THROWS( WorkspaceListProperty<Workspace>("MyWorkspaceProperty", vec), std::invalid_argument&);
@@ -120,7 +133,7 @@ public:
     AnalysisDataService::Instance().add("a", a);
     AnalysisDataService::Instance().add("b", b);
 
-    WorkspaceListProperty<Workspace>::WorkspacePropertyListType vec;
+    WorkspaceListProperty<Workspace>::WorkspaceListPropertyType vec;
     vec.push_back(a);
     vec.push_back(b);
 
@@ -143,10 +156,17 @@ public:
 
   void test_copy_construction()
   {
+    AnalysisDataServiceImpl&  ads = AnalysisDataService::Instance();
+    ads.add("a1", boost::make_shared<WorkspaceTester>());
+    ads.add("a2", boost::make_shared<WorkspaceTester>());
+
     WorkspaceListProperty<Workspace> a("PropA", "a1, a2", Direction::Input, PropertyMode::Optional);
     WorkspaceListProperty<Workspace> b(a);
     TS_ASSERT_EQUALS(a.getWorkspaceNames(), b.getWorkspaceNames());
     TS_ASSERT_EQUALS(a.isOptional(), b.isOptional());
+
+    AnalysisDataService::Instance().remove("a1");
+    AnalysisDataService::Instance().remove("a2");
   }
 
   void test_assignment()
@@ -161,7 +181,7 @@ public:
     AnalysisDataService::Instance().remove("a");
   }
 
-  void test_validator_usage()
+  void test_custom_validator_usage()
   {
     using namespace testing;
     std::string okString = "";
@@ -169,13 +189,23 @@ public:
     boost::shared_ptr<MockValidator> validator = boost::make_shared<MockValidator>();
     EXPECT_CALL(*validator.get(), check(_)).Times(3).WillRepeatedly(Return(okString));
 
-
     auto ws = boost::make_shared<WorkspaceTester>();
     AnalysisDataService::Instance().add("ws", ws);
     WorkspaceListProperty<Workspace> prop("Prop", "ws, ws, ws", Direction::Input, PropertyMode::Mandatory, validator);
 
     TSM_ASSERT("Should repeatedly call the validator", Mock::VerifyAndClearExpectations(validator.get()));
     AnalysisDataService::Instance().remove(ws->name());
+  }
+
+  void test_clone()
+  {
+    AnalysisDataServiceImpl&  ads = AnalysisDataService::Instance();
+    ads.add("a1", boost::make_shared<WorkspaceTester>());
+    WorkspaceListProperty<Workspace> * propOne = new WorkspaceListProperty<Workspace>("PropA", "a1", Direction::Input, PropertyMode::Optional);
+    WorkspaceListProperty<Workspace> * propTwo = propOne->clone();
+    TS_ASSERT_DIFFERS(propOne, propTwo);
+    delete propOne;
+    delete propTwo;
   }
 
   //------------------------------------------------------------------------------
