@@ -177,15 +177,7 @@ void toValue(const std::string& strvalue, std::vector<T>& value)
 template <typename T>
 void toValue(const std::string& strvalue, std::vector<boost::shared_ptr<T> >& value)
 {
-  names.erase(std::remove_if(names.begin(), names.end(), (int(*)(int))std::isspace), names.end());
-  std::vector<std::string> splitNames;
-  boost::split(splitNames, names, boost::is_any_of(","));
-
-  for(int i = 0; i < splitNames.size(); ++i)
-  {
-    auto ws = Mantid::API::AnalysisDataService::Instance().retrieve(splitNames[i]);
-    value.push_back(ws);
-  }
+  throw boost::bad_lexical_cast();
 }
 
 template <typename T>
