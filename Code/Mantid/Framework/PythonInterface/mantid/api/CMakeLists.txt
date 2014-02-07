@@ -34,6 +34,7 @@ set ( EXPORT_FILES
   src/Exports/IMDHistoWorkspace.cpp
   src/Exports/IMDHistoWorkspaceProperty.cpp  
   src/Exports/IMDEventWorkspace.cpp
+  src/Exports/IMaskWorkspace.cpp
   src/Exports/MatrixWorkspace.cpp
   src/Exports/MatrixWorkspaceProperty.cpp
   src/Exports/IEventWorkspace.cpp
