@@ -86,6 +86,9 @@ namespace Crystal
     this->declareProperty(
           new PropertyWithValue<int>( "NumberOfCells", 0,
           Direction::Output), "Gets set with the number of possible cells.");
+
+    this->declareProperty( "AllowPermutations", false,
+                            "Allow permutations of conventional cells" );
   }
 
   //--------------------------------------------------------------------------
@@ -113,8 +116,9 @@ namespace Crystal
 
     double max_scalar_error = this->getProperty("MaxScalarError");
     bool   best_only        = this->getProperty("BestOnly");
+    bool   allowPermutations        = this->getProperty("AllowPermutations");
 
-    std::vector<ConventionalCell> list = ScalarUtils::GetCells( UB, best_only );
+    std::vector<ConventionalCell> list = ScalarUtils::GetCells( UB, best_only, allowPermutations );
 
     ScalarUtils::RemoveHighErrorForms( list, max_scalar_error );
 
