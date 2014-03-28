@@ -92,31 +92,34 @@ namespace Algorithms
    */
   void GenerateEventsFilter::init()
   {
-    // 1. Input/Output Workspaces
+    // Input/Output Workspaces
     declareProperty(
-      new API::WorkspaceProperty<DataObjects::EventWorkspace>("InputWorkspace", "Anonymous", Direction::Input),
+      new API::WorkspaceProperty<DataObjects::EventWorkspace>("InputWorkspace", "", Direction::Input),
       "An input event workspace" );
 
     declareProperty(
-      new API::WorkspaceProperty<DataObjects::SplittersWorkspace>("OutputWorkspace", "Splitters", Direction::Output),
-      "The name to use for the output SplittersWorkspace object, i.e., the filter." );
+          new API::WorkspaceProperty<API::Workspace>("OutputWorkspace", "", Direction::Output),
+          "The name to use for the output SplittersWorkspace object, i.e., the filter." );
 
-    declareProperty(new API::WorkspaceProperty<API::ITableWorkspace>("InformationWorkspace", "SplitterInfo",
-                                                                     Direction::Output),
-                    "Optional output for the information of each splitter workspace index");
+    declareProperty(
+          new API::WorkspaceProperty<API::ITableWorkspace>("InformationWorkspace", "",
+                                                           Direction::Output),
+          "Optional output for the information of each splitter workspace index");
 
-    // 2. Time (general)
-    declareProperty("StartTime", "0.0",
+    declareProperty("FastLog", false, "Fast log will make output workspace to be a maxtrix workspace. ");
+
+    // Time (general) range
+    declareProperty("StartTime", "",
         "The start time, in (a) seconds, (b) nanoseconds or (c) percentage of total run time\n"
         "since the start of the run. OR (d) absolute time. \n"
         "Events before this time are filtered out.");
 
-    declareProperty("StopTime", "-1.0",
+    declareProperty("StopTime", "",
         "The stop time, in (2) seconds, (b) nanoseconds or (c) percentage of total run time\n"
         "since the start of the run. OR (d) absolute time. \n"
         "Events at or after this time are filtered out.");
 
-    // 3. Filter by time (only)
+    // Split by time (only) in steps
     declareProperty("TimeInterval", -1.0,
         "Length of the time splices if filtered in time only.");
 
@@ -129,7 +132,7 @@ namespace Algorithms
                     "The unit can be second or nanosecond from run start time."
                     "They can also be defined as percentage of total run time.");
 
-    // 4. Filter by log value (only)
+    // Split by log value (only) in steps
     declareProperty("LogName", "",
         "Name of the sample log to use to filter.\n"
         "For example, the pulse charge is recorded in 'ProtonCharge'.");
@@ -138,7 +141,7 @@ namespace Algorithms
 
     declareProperty("MaximumLogValue", EMPTY_DBL(), "Maximum log value for which to keep events.");
 
-    declareProperty("LogValueInterval", -1.0,
+    declareProperty("LogValueInterval", EMPTY_DBL(),
         "Delta of log value to be sliced into from min log value and max log value.\n"
         "If not given, then only value ");
 
@@ -151,7 +154,8 @@ namespace Algorithms
                     "d(log value)/dt can be positive and negative.  They can be put to different splitters.");
 
     declareProperty("TimeTolerance", 0.0,
-        "Tolerance in time for the event times to keep. It is used in the case to filter by single value.");
+                    "Tolerance in time for the event times to keep. "
+                    "It is used in the case to filter by single value.");
 
     vector<string> logboundoptions;
     logboundoptions.push_back("Centre");
@@ -167,9 +171,21 @@ namespace Algorithms
     declareProperty("LogValueTimeSections", 1,
         "In one log value interval, it can be further divided into sections in even time slice.");
 
-    // 5. Output workspaces' title and name
+    // Output workspaces' title and name
     declareProperty("TitleOfSplitters", "",
                     "Title of output splitters workspace and information workspace.");
+
+    // Linear or parallel
+    vector<string> processoptions;
+    processoptions.push_back("Serial");
+    processoptions.push_back("Parallel");
+    auto procvalidator = boost::make_shared<StringListValidator>(processoptions);
+    declareProperty("UseParallelProcessing", "Serial", procvalidator,
+                    "Use multiple cores to generate events filter by log values. \n"
+                    "Serial: Use a single core. Good for slow log. \n"
+                    "Parallel: Use multiple cores. Appropriate for fast log. ");
+
+    declareProperty("NumberOfThreads", 1, "Number of threads forced to use in the parallel mode. ");
 
     return;
   }
@@ -180,50 +196,16 @@ namespace Algorithms
    */
   void GenerateEventsFilter::exec()
   {
-    // 1. Get general input and output
-    m_dataWS = this->getProperty("InputWorkspace");
-    if (!m_dataWS)
-    {
-      std::stringstream errss;
-      errss << "GenerateEventsFilter does not get input workspace as an EventWorkspace.";
-      g_log.error(errss.str());
-      throw std::runtime_error(errss.str());
-    }
-    else
-    {
-      g_log.debug() << "DB9441 GenerateEventsFilter() Input Event WS = " << m_dataWS->getName()
-                    << ", Events = " << m_dataWS->getNumberEvents() << std::endl;
-    }
+    // Process input properties
+    processInOutWorkspaces();
 
-    Kernel::DateAndTime runstart = m_dataWS->run().startTime();
-    g_log.debug() << "DB9441 Run Start = " << runstart << " / " << runstart.totalNanoseconds()
-                  << "\n";
-
-    std::string title = getProperty("TitleOfSplitters");
-    if (title.size() == 0)
-    {
-      // Using default
-      title = "Splitters";
-    }
-
-    // Output Splitters workspace
-    m_splitWS =  boost::shared_ptr<DataObjects::SplittersWorkspace>(new DataObjects::SplittersWorkspace());
-    m_splitWS->setTitle(title);
-
-    // mFilterInfoWS = boost::shared_ptr<DataObjects::TableWorkspace>(new DataObjects::TableWorkspace);
-    m_filterInfoWS = API::WorkspaceFactory::Instance().createTable("TableWorkspace");
-    m_filterInfoWS->setTitle(title);
-
-    m_filterInfoWS->addColumn("int", "workspacegroup");
-    m_filterInfoWS->addColumn("str", "title");
-
-    // 2. Get Time
-    processInputTime(runstart);
+    // Get Time
+    processInputTime();
 
     double prog = 0.1;
     progress(prog);
 
-    // 3. Get Log
+    // Get Log
     std::string logname = this->getProperty("LogName");
     if (logname.empty())
     {
@@ -236,99 +218,183 @@ namespace Algorithms
       setFilterByLogValue(logname);
     }
 
-    this->setProperty("OutputWorkspace", m_splitWS);
-    this->setProperty("InformationWorkspace", m_filterInfoWS);
+    // Set output workspaces
+    if (m_forFastLog)
+    {
+      if (m_useParallel)
+      {
+        generateSplittersInMatrixWorkspaceParallel();
+      }
+      else
+      {
+        generateSplittersInMatrixWorkspace();
+      }
+      setProperty("OutputWorkspace", m_filterWS);
+    }
+    else
+    {
+      setProperty("OutputWorkspace", m_splitWS);
+    }
+    setProperty("InformationWorkspace", m_filterInfoWS);
 
     return;
   }
 
   //----------------------------------------------------------------------------------------------
-  /** Process the input for time.  A smart but complicated default rule
-    * @param runstarttime :: run start time in sample log
-   */
-  void GenerateEventsFilter::processInputTime(Kernel::DateAndTime runstarttime)
+  /** Process user properties
+    */
+  void GenerateEventsFilter::processInOutWorkspaces()
   {
-    // 1. Get input
+    // Input data workspace
+    m_dataWS = this->getProperty("InputWorkspace");
+
+    // Output splitter information workspace
+    std::string title = getProperty("TitleOfSplitters");
+    if (title.size() == 0)
+    {
+      // Using default
+      title = "Splitters";
+    }
+    m_filterInfoWS = API::WorkspaceFactory::Instance().createTable("TableWorkspace");
+    m_filterInfoWS->setTitle(title);
+    m_filterInfoWS->addColumn("int", "workspacegroup");
+    m_filterInfoWS->addColumn("str", "title");
+
+    // Output Splitters workspace: MatrixWorkspace (optioned) will be generated in last step
+    m_forFastLog = getProperty("FastLog");
+    if (!m_forFastLog)
+    {
+      m_splitWS =  boost::shared_ptr<DataObjects::SplittersWorkspace>(new DataObjects::SplittersWorkspace());
+      m_splitWS->setTitle(title);
+    }
+
+    string algtype = getPropertyValue("UseParallelProcessing");
+    if (algtype == "Serial") m_useParallel = false;
+    else if (algtype == "Parallel") m_useParallel = true;
+    else throw std::runtime_error("Impossible to have 3rd type. ");
+
+    return;
+  }
+
+
+  //----------------------------------------------------------------------------------------------
+  /** Process the input for time.  A smart but complicated default rule
+    * (1) Input time can be in multiple format: absolute time (ISO), relative time (double)
+   */
+  void GenerateEventsFilter::processInputTime()
+  {
+    // Get input
     std::string s_inpt0 = this->getProperty("StartTime");
     std::string s_inptf = this->getProperty("StopTime");
 
-    // 2. Check if input are in double or string
+    // Default
+    bool defaultstart = (s_inpt0.size() == 0);
+    bool defaultstop = (s_inptf.size() == 0);
+
+    // Determine format
     bool instringformat = true;
-    if (s_inpt0.find(':') == std::string::npos)
+    if (!defaultstart && s_inpt0.find(':') == std::string::npos)
     {
+      // StartTime is not empty and does not contain ":": not ISO
+      instringformat = false;
+    }
+    else if (!defaultstop && s_inptf.find(':') == std::string::npos)
+    {
+      // StopTime is not empty and does not contain ":": not ISO format
       instringformat = false;
     }
 
-    if (instringformat)
+    // Obtain run time range
+    DateAndTime runstarttime = m_dataWS->run().startTime();
+    /// FIXME Use this simple method may miss the events in the last pulse
+    Kernel::TimeSeriesProperty<double>* protonchargelog =
+        dynamic_cast<Kernel::TimeSeriesProperty<double> *>(m_dataWS->run().getProperty("proton_charge"));
+    Kernel::DateAndTime runendtime = protonchargelog->lastTime();
+
+    // Obtain time unit converter
+    std::string timeunit = this->getProperty("UnitOfTime");
+    m_timeUnitConvertFactorToNS = -1.0;
+    if (timeunit.compare("Seconds") == 0)
     {
-      // 1. In absolute time ISO format
-      Kernel::DateAndTime t0(s_inpt0);
-      Kernel::DateAndTime t1(s_inptf);
-      mStartTime = t0;
-      mStopTime = t1;
+      // (second)
+      m_timeUnitConvertFactorToNS = 1.0E9;
+    }
+    else if (timeunit.compare("Nanoseconds") == 0)
+    {
+      // (nano-seconds)
+      m_timeUnitConvertFactorToNS = 1.0;
+    }
+    else if (timeunit.compare("Percent") == 0)
+    {
+      // (percent of total run time)
+      int64_t runtime_ns = runendtime.totalNanoseconds()-runstarttime.totalNanoseconds();
+      double runtimed_ns = static_cast<double>(runtime_ns);
+      m_timeUnitConvertFactorToNS = 0.01*runtimed_ns;
     }
     else
     {
-      // 2. In double relative time format
-      std::string timeunit = this->getProperty("UnitOfTime");
-      double inpt0 = atof(s_inpt0.c_str());
-      double inptf = atof(s_inptf.c_str());
-
-      if (inpt0 < 0)
-      {
-        throw std::invalid_argument("Input StartTime cannot be negative!");
-      }
-
-      // 2. Find maximum time by proton charge
-      // FIXME Use this simple method may miss the events in the last pulse
-      Kernel::TimeSeriesProperty<double>* protonchargelog =
-          dynamic_cast<Kernel::TimeSeriesProperty<double> *>(m_dataWS->run().getProperty("proton_charge"));
-      Kernel::DateAndTime runend = protonchargelog->lastTime();
-
-      // 3. Set up time-convert unit
-      m_timeUnitConvertFactor = 1.0;
-      if (timeunit.compare("Seconds") == 0)
-      {
-        // a) In unit of seconds
-        m_timeUnitConvertFactor = 1.0E9;
-      }
-      else if (timeunit.compare("Nanoseconds") == 0)
-      {
-        // b) In unit of nano-seconds
-        m_timeUnitConvertFactor = 1.0;
-      }
-      else if (timeunit.compare("Percent") == 0)
-      {
-        // c) In unit of percent of total run time
-        int64_t runtime_ns = runend.totalNanoseconds()-runstarttime.totalNanoseconds();
-        double runtimed_ns = static_cast<double>(runtime_ns);
-        m_timeUnitConvertFactor = 0.01*runtimed_ns;
-      }
-      else
-      {
-        // d) Not defined
-        g_log.error() << "TimeType " << timeunit << " is not supported!" << std::endl;
-        throw std::runtime_error("Input TimeType is not supported");
-      }
-
-      // 4. Process second round
-      int64_t t0_ns = runstarttime.totalNanoseconds() + static_cast<int64_t>(inpt0*m_timeUnitConvertFactor);
-      Kernel::DateAndTime tmpt0(t0_ns);
-      mStartTime = tmpt0;
-
-      if (inptf < inpt0)
-      {
-        mStopTime = runend;
-      }
-      else
-      {
-        int64_t tf_ns = runstarttime.totalNanoseconds()+static_cast<int64_t>(inptf*m_timeUnitConvertFactor);
-        Kernel::DateAndTime tmptf(tf_ns);
-        mStopTime = tmptf;
-      }
+      // (Not defined/supported)
+      stringstream  errss;
+      errss << "TimeType " << timeunit << " is not supported.";
+      throw std::runtime_error(errss.str());
     }
 
-    g_log.information() << "Filter: StartTime = " << mStartTime << ", StopTime = " << mStopTime << std::endl;
+    // Set up start time
+    if (defaultstart)
+    {
+      // Default
+      m_startTime = runstarttime;
+    }
+    else if (instringformat)
+    {
+      // Time is absolute time in ISO format
+      m_startTime = DateAndTime(s_inpt0);
+    }
+    else
+    {
+      // Relative time in double.
+      double inpt0 = atof(s_inpt0.c_str());
+      if (inpt0 < 0)
+      {
+        stringstream errss;
+        errss << "Input relative StartTime " << inpt0 << " cannot be negative. ";
+        throw std::invalid_argument(errss.str());
+      }
+      int64_t t0_ns = runstarttime.totalNanoseconds() + static_cast<int64_t>(inpt0*m_timeUnitConvertFactorToNS);
+      m_startTime = Kernel::DateAndTime(t0_ns);
+    }
+
+    // Set up run stop time
+    if (defaultstop)
+    {
+      // Default
+      m_stopTime = runendtime;
+    }
+    else if (instringformat)
+    {
+      // Absolute time in ISO format
+      m_stopTime = DateAndTime(s_inptf);
+    }
+    else
+    {
+      // Relative time in double
+      double inptf = atof(s_inptf.c_str());
+      int64_t tf_ns = runstarttime.totalNanoseconds()+static_cast<int64_t>(inptf*m_timeUnitConvertFactorToNS);
+      m_stopTime = Kernel::DateAndTime(tf_ns);
+    }
+
+    // Check start/stop time
+    if (m_startTime.totalNanoseconds() >= m_stopTime.totalNanoseconds())
+    {
+      stringstream errss;
+      errss << "Input StartTime " << m_startTime.toISO8601String() << " is equal or later than "
+            << "input StopTime " << m_stopTime.toFormattedString();
+      throw runtime_error(errss.str());
+    }
+
+    g_log.information() << "Filter: StartTime = " << m_startTime << ", StopTime = " << m_stopTime
+                        << "; Run start = " << runstarttime.toISO8601String()
+                        << ", Run stop = " << runendtime.toISO8601String() << "\n";
 
     return;
   }
@@ -341,53 +407,64 @@ namespace Algorithms
     double timeinterval = this->getProperty("TimeInterval");
 
     // Progress
-    int64_t totaltime = mStopTime.totalNanoseconds()-mStartTime.totalNanoseconds();
+    int64_t totaltime = m_stopTime.totalNanoseconds()-m_startTime.totalNanoseconds();
     int64_t timeslot = 0;
 
     if (timeinterval <= 0.0)
     {
       int wsindex = 0;
-      // 1. Default and thus just one interval
-      Kernel::SplittingInterval ti(mStartTime, mStopTime, 0);
+      // Default and thus just one interval
+#if 0
+      Kernel::SplittingInterval ti(m_startTime, m_stopTime, 0);
       m_splitWS->addSplitter(ti);
-
       API::TableRow row = m_filterInfoWS->appendRow();
       std::stringstream ss;
-      ss << "Time Interval From " << mStartTime << " to " << mStopTime;
+      ss << "Time Interval From " << m_startTime << " to " << m_stopTime;
       row << wsindex << ss.str();
+#else
+      std::stringstream ss;
+      ss << "Time Interval From " << m_startTime << " to " << m_stopTime;
+      addSplitter(m_startTime, m_stopTime, wsindex, ss.str());
+#endif
     }
     else
     {
-      // 2. Use N time interval
-      int64_t deltatime_ns = static_cast<int64_t>(timeinterval*m_timeUnitConvertFactor);
+      // Explicitly N time intervals
+      int64_t deltatime_ns = static_cast<int64_t>(timeinterval*m_timeUnitConvertFactorToNS);
 
-      int64_t curtime_ns = mStartTime.totalNanoseconds();
+      int64_t curtime_ns = m_startTime.totalNanoseconds();
       int wsindex = 0;
-      while (curtime_ns < mStopTime.totalNanoseconds())
+      while (curtime_ns < m_stopTime.totalNanoseconds())
       {
-        // a) Calculate next.time
+        // Calculate next.time
         int64_t nexttime_ns = curtime_ns + deltatime_ns;
-        if (nexttime_ns > mStopTime.totalNanoseconds())
-          nexttime_ns = mStopTime.totalNanoseconds();
+        if (nexttime_ns > m_stopTime.totalNanoseconds())
+          nexttime_ns = m_stopTime.totalNanoseconds();
 
-        // b) Create splitter
+        // Create splitter and information
         Kernel::DateAndTime t0(curtime_ns);
         Kernel::DateAndTime tf(nexttime_ns);
+        std::stringstream ss;
+        ss << "Time Interval From " << t0 << " to " << tf;
+#if 0
+
         Kernel::SplittingInterval spiv(t0, tf, wsindex);
         m_splitWS->addSplitter(spiv);
 
-        // c) Information
+        // c)
         API::TableRow row = m_filterInfoWS->appendRow();
-        std::stringstream ss;
-        ss << "Time Interval From " << t0 << " to " << tf;
-        row << wsindex << ss.str();
 
-        // d) Update loop variable
+        row << wsindex << ss.str();
+#else
+        addSplitter(t0, tf, wsindex, ss.str());
+#endif
+
+        // Update loop variable
         curtime_ns = nexttime_ns;
         wsindex ++;
 
-        // e) Update progress
-        int64_t newtimeslot = (curtime_ns-mStartTime.totalNanoseconds())*90/totaltime;
+        // Update progress
+        int64_t newtimeslot = (curtime_ns-m_startTime.totalNanoseconds())*90/totaltime;
         if (newtimeslot > timeslot)
         {
           // There is change and update progress
@@ -409,14 +486,13 @@ namespace Algorithms
     */
   void GenerateEventsFilter::setFilterByLogValue(std::string logname)
   {
-    // 1. Get hold on sample log to filter with
+    // Obtain reference of sample log to filter with
     m_dblLog = dynamic_cast<TimeSeriesProperty<double>* >(m_dataWS->run().getProperty(logname));
     m_intLog = dynamic_cast<TimeSeriesProperty<int>* > (m_dataWS->run().getProperty(logname));
     if (!m_dblLog && !m_intLog)
     {
       stringstream errmsg;
       errmsg << "Log " << logname << " does not exist or is not TimeSeriesProperty in double or integer.";
-      g_log.error(errmsg.str());
       throw runtime_error(errmsg.str());
     }
 
@@ -426,12 +502,12 @@ namespace Algorithms
     else
       m_intLog->eliminateDuplicates();
 
-    // 2. Process input properties related to filter with log value
+    // Process input properties related to filter with log value
     double minvalue = this->getProperty("MinimumLogValue");
     double maxvalue = this->getProperty("MaximumLogValue");
     double deltaValue = this->getProperty("LogValueInterval");
 
-    // 3. Log value change direction
+    // Log value change direction
     std::string filterdirection = getProperty("FilterLogValueByChangingDirection");
     bool filterIncrease;
     bool filterDecrease;
@@ -452,12 +528,16 @@ namespace Algorithms
     }
 
     bool toProcessSingleValueFilter = false;
-    if (deltaValue <= 0)
+    if (isEmpty(deltaValue))
     {
       toProcessSingleValueFilter = true;
     }
+    else if (deltaValue < 0)
+    {
+      throw runtime_error("Delta value cannot be negative.");
+    }
 
-    // 4. Log boundary
+    // Log boundary
     string logboundary = getProperty("LogBoundary");
     if (logboundary.compare("Centre"))
       m_logAtCentre = true;
@@ -466,9 +546,10 @@ namespace Algorithms
 
     m_logTimeTolerance = getProperty("TimeTolerance");
 
-    // 5. Generate filters
+    // Generate filters
     if (m_dblLog)
     {
+      // Double TimeSeriesProperty log
       // Process min/max
       if (minvalue == EMPTY_DBL())
       {
@@ -484,33 +565,48 @@ namespace Algorithms
         stringstream errmsg;
         errmsg << "Fatal Error: Input minimum log value " << minvalue
                << " is larger than maximum log value " << maxvalue;
-        g_log.error(errmsg.str());
         throw runtime_error(errmsg.str());
       }
 
       // Filter double value log
       if (toProcessSingleValueFilter)
       {
-        // a) Generate a filter for a single log value
+        // Generate a filter for a single log value
         processSingleValueFilter(minvalue, maxvalue, filterIncrease, filterDecrease);
       }
       else
       {
-        // b) Generate filters for a series of log value
+        // Generate filters for a series of log value
         processMultipleValueFilters(minvalue, maxvalue, filterIncrease, filterDecrease);
+      }
+
+      // Add splitters
+      /// FIXME/TODO : consider of refactor!
+      size_t numsplits = m_splitters.size();
+      for (size_t i = 0; i < numsplits; ++i)
+      {
+        SplittingInterval split = m_splitters[i];
+        m_splitWS->addSplitter(split);
       }
     }
     else
     {
-      // Filter integer log
+      // Integer TimeSeriesProperty log
+      // Process min/max allowed value
       int minvaluei, maxvaluei;
       if (minvalue == EMPTY_DBL())
+      {
         minvaluei = m_intLog->minValue();
+        minvalue = static_cast<double>(minvaluei);
+      }
       else
         minvaluei = static_cast<int>(minvalue+0.5);
 
       if (maxvalue == EMPTY_DBL())
+      {
         maxvaluei = m_intLog->maxValue();
+        maxvalue = static_cast<double>(maxvaluei);
+      }
       else
         maxvaluei = static_cast<int>(maxvalue+0.5);
 
@@ -519,21 +615,30 @@ namespace Algorithms
         stringstream errmsg;
         errmsg << "Fatal Error: Input minimum log value " << minvalue
                << " is larger than maximum log value " << maxvalue;
-        g_log.error(errmsg.str());
         throw runtime_error(errmsg.str());
       }
 
-      TimeSplitterType splitters;
+      // Split along log
       DateAndTime runendtime = m_dataWS->run().endTime();
-      processIntegerValueFilter(splitters, minvaluei, maxvaluei, filterIncrease, filterDecrease, runendtime);
 
-      size_t numsplits = splitters.size();
-      for (size_t i = 0; i < numsplits; ++i)
+      if (m_forFastLog)
       {
-        SplittingInterval split = splitters[i];
-        m_splitWS->addSplitter(split);
+        throw runtime_error("Implement ASAP F327.");
       }
-    }
+      else
+      {
+        processIntegerValueFilter(minvaluei, maxvaluei, filterIncrease, filterDecrease, runendtime);
+
+        // Add splitters
+        /// FIXME/TODO : consider of refactor!
+        size_t numsplits = m_splitters.size();
+        for (size_t i = 0; i < numsplits; ++i)
+        {
+          SplittingInterval split = m_splitters[i];
+          m_splitWS->addSplitter(split);
+        }
+      }
+    } // ENDIFELSE: Double/Integer Log
 
     g_log.debug() << "[GenearteEventFilter DB1248] minimum value = " << minvalue <<  ", "
                   << "maximum value = " << maxvalue << ".\n";
@@ -553,7 +658,7 @@ namespace Algorithms
   {
     // 1. Validity & value
     double timetolerance = this->getProperty("TimeTolerance");
-    int64_t timetolerance_ns = static_cast<int64_t>(timetolerance*m_timeUnitConvertFactor);
+    int64_t timetolerance_ns = static_cast<int64_t>(timetolerance*m_timeUnitConvertFactorToNS);
 
     std::string logboundary = this->getProperty("LogBoundary");
     transform(logboundary.begin(), logboundary.end(), logboundary.begin(), ::tolower);
@@ -563,7 +668,7 @@ namespace Algorithms
     int wsindex = 0;
     makeFilterByValue(splitters, minvalue, maxvalue, static_cast<double>(timetolerance_ns)*1.0E-9,
         logboundary.compare("centre")==0,
-        filterincrease, filterdecrease, mStartTime, mStopTime, wsindex);
+        filterincrease, filterdecrease, m_startTime, m_stopTime, wsindex);
 
     // 3. Add to output
     for (size_t isp = 0; isp < splitters.size(); isp ++)
@@ -655,47 +760,100 @@ namespace Algorithms
     } // ENDWHILE
 
     // Debug print
-    stringstream splitss;
-    splitss << "Index map size = " << indexwsindexmap.size() << "\n";
+    stringstream dbsplitss;
+    dbsplitss << "Index map size = " << indexwsindexmap.size() << "\n";
     for (map<size_t, int>::iterator mit = indexwsindexmap.begin();
          mit != indexwsindexmap.end(); ++mit)
     {
-      splitss << "Index " << mit->first << ":  WS-group = " << mit->second
+      dbsplitss << "Index " << mit->first << ":  WS-group = " << mit->second
               << ". Log value range: " << logvalueranges[mit->first*2] << ", "
               << logvalueranges[mit->first*2+1] << ".\n";
     }
-    g_log.information(splitss.str());
+    g_log.information(dbsplitss.str());
 
+    // Check split interval obtained wehther is with valid size
     if (logvalueranges.size() < 2)
     {
-      g_log.warning() << "There is no log value interval existing." << std::endl;
+      g_log.warning("There is no log value interval existing.");
       return;
     }
 
-    double upperboundinterval0 = logvalueranges[1];
-    double lowerboundlastinterval = logvalueranges[logvalueranges.size()-2];
-    double minlogvalue = m_dblLog->minValue();
-    double maxlogvalue = m_dblLog->maxValue();
-    if (minlogvalue > upperboundinterval0 || maxlogvalue < lowerboundlastinterval)
+
     {
-      g_log.warning() << "User specifies log interval from " << minvalue-valuetolerance
-                      << " to " << maxvalue-valuetolerance << " with interval size = " << valueinterval
-                      << "; Log " << m_dblLog->name() << " has range " << minlogvalue << " to " << maxlogvalue
-                      << ".  Therefore some workgroup index may not have any splitter." << std::endl;
+      // Warning information
+      double upperboundinterval0 = logvalueranges[1];
+      double lowerboundlastinterval = logvalueranges[logvalueranges.size()-2];
+      double minlogvalue = m_dblLog->minValue();
+      double maxlogvalue = m_dblLog->maxValue();
+      if (minlogvalue > upperboundinterval0 || maxlogvalue < lowerboundlastinterval)
+      {
+        g_log.warning() << "User specifies log interval from " << minvalue-valuetolerance
+                        << " to " << maxvalue-valuetolerance << " with interval size = " << valueinterval
+                        << "; Log " << m_dblLog->name() << " has range " << minlogvalue << " to " << maxlogvalue
+                        << ".  Therefore some workgroup index may not have any splitter." << std::endl;
+      }
     }
 
-    // 3. Call
+    // Generate event filters by log value
     Kernel::TimeSplitterType splitters;
     std::string logboundary = this->getProperty("LogBoundary");
     transform(logboundary.begin(), logboundary.end(), logboundary.begin(), ::tolower);
 
-    makeMultipleFiltersByValues(splitters, indexwsindexmap, logvalueranges,
-                                logboundary.compare("centre") == 0,
-                                filterincrease, filterdecrease, mStartTime, mStopTime);
+    if (m_useParallel)
+    {
+      // Make filters in parallel
+      makeMultipleFiltersByValuesParallel(indexwsindexmap, logvalueranges,
+                                          logboundary.compare("centre") == 0,
+                                          filterincrease, filterdecrease, m_startTime, m_stopTime);
+    }
+    else
+    {
+      // Make filters in serial
+      makeMultipleFiltersByValues(indexwsindexmap, logvalueranges,
+                                  logboundary.compare("centre") == 0,
+                                  filterincrease, filterdecrease, m_startTime, m_stopTime);
+    }
 
-    // 4. Put to SplittersWorkspace
-    for (size_t i = 0; i < splitters.size(); i ++)
-      m_splitWS->addSplitter(splitters[i]);
+    // Put to SplittersWorkspace
+    if (m_forFastLog)
+    {
+      // Splitters in matrix workspace
+#if 0
+      g_log.notice() << "Number of vector splitter: " << m_vecSplitterTime.size()
+                     << ", " << m_vecSplitterGroup.size() << "\n";
+      for (size_t i = 0; i < m_vecSplitterGroup.size(); ++i)
+      {
+        g_log.notice() << m_vecSplitterTime[i] << ", " << m_vecSplitterGroup[i] << "\n";
+      }
+      g_log.notice() << m_vecSplitterTime.back() << "\n";
+#endif
+
+#if 0
+      size_t sizex = m_vecSplitterTime.size();
+      size_t sizey = m_vecSplitterGroup.size();
+      if (sizex - sizey != 1)
+        throw runtime_error("Logic error.");
+
+      m_filterWS = boost::dynamic_pointer_cast<MatrixWorkspace>
+          (API::WorkspaceFactory::Instance().create("Workspace2D", 1, sizex, sizey));
+
+      MantidVec& dataX = m_filterWS->dataX(0);
+      for (size_t i = 0; i < sizex; ++i)
+        dataX[i] = static_cast<double>(m_vecSplitterTime[i].totalNanoseconds());
+
+      MantidVec& dataY = m_filterWS->dataY(0);
+      for (size_t i = 0; i < sizey; ++i)
+        dataY[i] = static_cast<double>(m_vecSplitterGroup[i]);
+#else
+      // generateSplittersInMatrixWorkspace();
+#endif
+    }
+    else
+    {
+      // Normal SplitterWorkspace
+      for (size_t i = 0; i < splitters.size(); i ++)
+        m_splitWS->addSplitter(splitters[i]);
+    }
 
     return;
   }
@@ -719,8 +877,8 @@ namespace Algorithms
    * @param centre :: Whether the log value time is considered centred or at the beginning.
    */
   void GenerateEventsFilter::makeFilterByValue(TimeSplitterType &split,
-      double min, double max, double TimeTolerance, bool centre, bool filterIncrease,
-      bool filterDecrease, DateAndTime startTime, Kernel::DateAndTime stopTime, int wsindex)
+                                               double min, double max, double TimeTolerance, bool centre, bool filterIncrease,
+                                               bool filterDecrease, DateAndTime startTime, Kernel::DateAndTime stopTime, int wsindex)
   {
     // 1. Do nothing if the log is empty.
     if (m_dblLog->size() == 0)
@@ -844,7 +1002,7 @@ namespace Algorithms
    * @param startTime :: Start time.
    * @param stopTime :: Stop time.
    */
-  void GenerateEventsFilter::makeMultipleFiltersByValues(TimeSplitterType& split, map<size_t, int> indexwsindexmap,
+  void GenerateEventsFilter::makeMultipleFiltersByValues(map<size_t, int> indexwsindexmap,
                                                          vector<double> logvalueranges,
                                                          bool centre, bool filterIncrease, bool filterDecrease,
                                                          DateAndTime startTime, DateAndTime stopTime)
@@ -1065,6 +1223,9 @@ namespace Algorithms
       // d) Create Splitter
       if (createsplitter)
       {
+        make_splitter(start, stop, lastindex, tol);
+
+#if 0
         if (centre)
         {
           split.push_back( SplittingInterval(start-tol, stop-tol, lastindex) );
@@ -1073,10 +1234,12 @@ namespace Algorithms
         {
           split.push_back( SplittingInterval(start, stop, lastindex) );
         }
+
         g_log.debug() << "DBx250 Add Splitter " << split.size()-1 << ":  " << start.totalNanoseconds() << ", "
                       << stop.totalNanoseconds() << ", Delta T = "
                       << static_cast<double>(stop.totalNanoseconds()-start.totalNanoseconds())*1.0E-9
                       << "(s), Workgroup = " << lastindex << std::endl;
+#endif
 
         // reset
         start = ZeroTime;
@@ -1109,54 +1272,533 @@ namespace Algorithms
     progress(1.0);
 
     return;
-
   }
+
+
+  //-----------------------------------------------------------------------------------------------
+  /** Fill a TimeSplitterType that will filter the events by matching
+   * SINGLE log values >= min and < max. Creates SplittingInterval's where
+   * times match the log values, and going to index==0.
+   *
+   * @param split :: Splitter that will be filled.
+   * @param indexwsindexmap :: Index.
+   * @param logvalueranges ::  A vector of double. Each 2i and 2i+1 pair is one individual log value range.
+   * @param centre :: Whether the log value time is considered centred or at the beginning.
+   * @param filterIncrease :: As log value increase, and within (min, max), include this range in the filter.
+   * @param filterDecrease :: As log value increase, and within (min, max), include this range in the filter.
+   * @param startTime :: Start time.
+   * @param stopTime :: Stop time.
+   */
+  void GenerateEventsFilter::makeMultipleFiltersByValuesParallel(map<size_t, int> indexwsindexmap,
+                                                                 vector<double> logvalueranges,
+                                                                 bool centre, bool filterIncrease, bool filterDecrease,
+                                                                 DateAndTime startTime, DateAndTime stopTime)
+  {
+    // Return if the log is empty.
+    int logsize = m_dblLog->size();
+    if (logsize == 0)
+    {
+      g_log.warning() << "There is no entry in this property " << m_dblLog->name() << std::endl;
+      return;
+    }
+
+    // Set up
+    double timetolerance = 0.0;
+    if (centre)
+    {
+      timetolerance = this->getProperty("TimeTolerance");
+    }
+    time_duration tol = DateAndTime::durationFromSeconds( timetolerance );
+
+    // Determine the number of threads to use
+#if 1
+    int numThreads = getProperty("NumberOfThreads");
+    g_log.error() << "[DB Force] Number of threads to use = " << numThreads << "\n";
+#else
+    int numThreads = std::max(1, static_cast<int>(size_t(PARALLEL_GET_MAX_THREADS))-2);
+    g_log.notice() << "Number of threads to use = " << numThreads << "\n";
+#endif
+    numThreads = std::min(numThreads, logsize-1);
+
+    // Determine the istart and iend
+    // For split, log should be [0, n], [n, 2n], [2n, 3n], ... as to look into n log values
+    std::vector<int> vecStart, vecEnd;
+    int partloglength = (logsize-1)/numThreads;
+    int extra = (logsize-1)%numThreads;
+    for (int i = 0; i < numThreads; ++i)
+    {
+      int istart = i*partloglength;
+      if (i < extra)
+        istart += i;
+      else
+        istart += extra;
+
+      int iend = istart + partloglength;
+      if (i < extra)
+        ++ iend;
+
+      vecStart.push_back(istart);
+      vecEnd.push_back(iend);
+    }
+
+    g_log.notice() << "Number of thread = " << numThreads << ", Log Size = " << logsize << "\n";
+#if _DBOUT
+    for (size_t i = 0; i < vecStart.size(); ++i)
+    {
+      g_log.debug() << "Thread " << i << ": Log range: [" << vecStart[i] << ", " << vecEnd[i] << ") "
+                     << "Size = " << vecEnd[i] - vecStart[i] << "\n";
+    }
+#endif
+
+    // Create partial vectors
+    vecSplitterTimeSet.clear();
+    vecGroupIndexSet.clear();
+    for (int i = 0; i < numThreads; ++i)
+    {
+      vector<DateAndTime> tempvectimes;
+      tempvectimes.reserve(m_dblLog->size());
+      vector<int> tempvecgroup;
+      tempvecgroup.reserve(m_dblLog->size());
+      vecSplitterTimeSet.push_back(tempvectimes);
+      vecGroupIndexSet.push_back(tempvecgroup);
+    }
+
+    // Create event filters/splitters in parallel
+    PRAGMA_OMP(parallel for schedule(dynamic, 1) )
+    for (int i = 0; i < numThreads; ++i)
+    {
+      PARALLEL_START_INTERUPT_REGION
+
+      int istart = vecStart[i];
+      int iend = vecEnd[i];
+
+      makeMultipleFiltersByValuesPartialLog(istart, iend, vecSplitterTimeSet[i], vecGroupIndexSet[i],
+                                            indexwsindexmap, logvalueranges, tol,
+                                            filterIncrease, filterDecrease, startTime, stopTime);
+      PARALLEL_END_INTERUPT_REGION
+    }
+    PARALLEL_CHECK_INTERUPT_REGION
+
+    // Temporary solution: combine to m_vecSplitterTime and ....
+#if _DBOUT
+    for (int i = 0; i < numThreads; ++i)
+    {
+      for (size_t j = 0; j < vecGroupIndexSet[i].size(); ++ j)
+      {
+        g_log.debug() << "[DB] Thread " << i << " Splitter " << j << " Start = "
+                       << vecSplitterTimeSet[i][j] << ", Stop = " << vecSplitterTimeSet[i][j+1]
+                       << ", Index = " << vecGroupIndexSet[i][j] << "\n";
+      }
+    }
+#endif
+
+    for (int i = 1; i < numThreads; ++i)
+    {
+      if (vecSplitterTimeSet[i-1].back() == vecSplitterTimeSet[i].front())
+      {
+        if (vecGroupIndexSet[i-1].back() == vecGroupIndexSet[i].front())
+        {
+          // T_stop = T_start, I_stop = I_start, combine: pop back last element
+          // Rule out impossible situation
+          if (vecGroupIndexSet[i-1].back() == -1) throw runtime_error("It is not possible to have this situation (F01).");
+
+          vecGroupIndexSet[i-1].pop_back();
+          DateAndTime newt0 = vecSplitterTimeSet[i-1].front();
+          vecSplitterTimeSet[i-1].pop_back();
+          DateAndTime origtime = vecSplitterTimeSet[i][0];
+          vecSplitterTimeSet[i][0] = newt0;
+          g_log.debug() << "[DB-0] Extending from " << origtime << " to " << newt0 << "\n";
+        }
+        else
+        {
+          // Ideal case. NoOp
+          ;
+        }
+      }
+      else
+      {
+        int lastindex = vecGroupIndexSet[i-1].back();
+        int firstindex = vecGroupIndexSet[i].front();
+
+        if (lastindex != -1 && firstindex != -1)
+        {
+          // T_stop < T_start, I_stop != -1, I_start != 1. : Insert a minus-one entry to make it complete
+          vecGroupIndexSet[i-1].push_back(-1);
+          vecSplitterTimeSet[i-1].push_back(vecSplitterTimeSet[i].front());
+        }
+        else if (lastindex == -1 && vecGroupIndexSet[i-1].size() == 1)
+        {
+          // Empty splitter of the thread. Extend this to next
+          vecSplitterTimeSet[i-1].back() = vecSplitterTimeSet[i].front();
+          g_log.debug() << "[DB-2] Thread = " << i << ", change ending time of " << i-1 << " to " << vecSplitterTimeSet[i].front()
+                         << "\n";
+        }
+        else if (firstindex == -1 && vecGroupIndexSet[i].size() == 1)
+        {
+          // Empty splitter of the thread. Extend last one to this
+          vecSplitterTimeSet[i].front() = vecSplitterTimeSet[i-1].back();
+          g_log.debug() << "[DB-3] Thread = " << i << ", change starting time to " << vecSplitterTimeSet[i].front() << "\n";
+        }
+        else
+        {
+          throw runtime_error("It is not possible to have start or end of filter to be minus-one index. ");
+        }
+      }
+    }
+
+#if _DBOUT
+    g_log.notice() << "[DB] After processing multiple thread boundary issue: \n";
+    for (int i = 0; i < numThreads; ++i)
+    {
+      for (size_t j = 0; j < vecGroupIndexSet[i].size(); ++ j)
+      {
+        g_log.notice() << "[DB] Thread " << i << " Splitter " << j << " Start = "
+                       << vecSplitterTimeSet[i][j] << ", Stop = " << vecSplitterTimeSet[i][j+1]
+                       << ", Index = " << vecGroupIndexSet[i][j] << "\n";
+      }
+    }
+#endif
+
+    progress(1.0);
+
+    return;
+  }
+
+  //----------------------------------------------------------------------------------------------
+  /** Make filters by multiple log values of partial log
+    */
+  void GenerateEventsFilter::makeMultipleFiltersByValuesPartialLog(int istart, int iend,
+                                                                   std::vector<Kernel::DateAndTime>& vecSplitTime,
+                                                                   std::vector<int>& vecSplitGroup,
+                                                                   map<size_t, int> indexwsindexmap,
+                                                                   const vector<double>& logvalueranges, time_duration tol,
+                                                                   bool filterIncrease, bool filterDecrease,
+                                                                   DateAndTime startTime, DateAndTime stopTime)
+  {
+    // Check
+    int logsize = m_dblLog->size();
+    if (istart < 0 || iend >= logsize)
+      throw runtime_error("Input index of makeMultipleFiltersByValuesPartialLog is out of boundary. ");
+
+    // Define loop control parameters
+    const Kernel::DateAndTime ZeroTime(0);
+    int lastindex = -1;
+    int currindex = -1;
+    DateAndTime lastTime;
+    DateAndTime currTime = ZeroTime;
+    DateAndTime start, stop;
+    // size_t progslot = 0;
+
+    g_log.information() << "Log time coverage (index: " << istart << ", " << iend << ") from "
+                        << m_dblLog->nthTime(istart) << ", " << m_dblLog->nthTime(iend) << "\n";
+
+    for (int i = istart; i <= iend; i ++)
+    {
+      // Initialize status flags and new entry
+      bool breakloop = false;
+      bool createsplitter = false;
+
+      lastTime = currTime;
+      currTime = m_dblLog->nthTime(i);
+      double currValue = m_dblLog->nthValue(i);
+
+      // Filter out by time and direction (optional)
+      bool intime = false;
+      if (currTime < startTime)
+      {
+        // case i.  Too early, do nothing
+        createsplitter = false;
+      }
+      else if (currTime > stopTime)
+      {
+        // case ii. Too late.  Put to splitter if half of splitter is done.  But still within range
+        breakloop = true;
+        stop = currTime;
+        if (start.totalNanoseconds() > 0)
+        {
+          createsplitter = true;
+        }
+      }
+      else
+      {
+        // case iii. In the range to generate filters
+        intime = true;
+      }
+
+      // Check log within given time range
+      bool newsplitter = false; // Flag to start a new split in this loop
+
+      if (intime)
+      {
+        // Determine direction
+        bool correctdir = true;
+        if (filterIncrease && filterDecrease)
+        {
+          // Both direction is fine
+          correctdir = true;
+        }
+        else
+        {
+          // Filter out one direction
+          int direction = 0;
+          if ( m_dblLog->nthValue(i)-m_dblLog->nthValue(i-1) > 0)
+            direction = 1;
+          else
+            direction = -1;
+          if (filterIncrease && direction > 0)
+            correctdir = true;
+          else if (filterDecrease && direction < 0)
+            correctdir = true;
+          else
+            correctdir = false;
+
+          // Condition to generate a Splitter (close parenthesis)
+          if (!correctdir && start.totalNanoseconds() > 0)
+          {
+            stop = currTime;
+            createsplitter = true;
+          }
+        } // END-IF-ELSE: Direction
+
+        // Check this value whether it falls into any range
+        if (correctdir)
+        {
+          size_t index = searchValue(logvalueranges, currValue);
+#if 0
+          g_log.debug() << "DBx257 Examine Log Index " << i << ", Value = " << currValue
+                        << ", Data Range Index = " << index << "; "
+                        << "Group Index = " << indexwsindexmap[index/2]
+                        << " (log value range vector size = " << logvalueranges.size() << ").\n";
+#endif
+
+          bool valuewithin2boundaries = true;
+          if (index > logvalueranges.size())
+          {
+            // Out of range
+            valuewithin2boundaries = false;
+          }
+
+          if (index%2 == 0 && valuewithin2boundaries)
+          {
+            // [Situation] Falls in the interval
+            currindex = indexwsindexmap[index/2];
+
+            if (currindex != lastindex && start.totalNanoseconds() == 0)
+            {
+              // i.   A new region!
+              newsplitter = true;
+            }
+            else if (currindex != lastindex && start.totalNanoseconds() > 0)
+            {
+              // ii.  Time to close a region and new a region
+              stop = currTime;
+              createsplitter = true;
+              newsplitter = true;
+            }
+            else if (currindex == lastindex && start.totalNanoseconds() > 0)
+            {
+              // iii. Still in the same zone
+              if (i == iend)
+              {
+                // Last entry in this section of log.  Need to flag to close the pair
+                stop = currTime;
+                createsplitter = true;
+                newsplitter = false;
+              }
+              else
+              {
+                // Do nothing
+                ;
+              }
+            }
+            else
+            {
+              // iv.  It is impossible
+              std::stringstream errmsg;
+              double lastvalue =  m_dblLog->nthValue(i-1);
+              errmsg << "Impossible to have currindex == lastindex == " << currindex
+                     << ", while start is not init.  Log Index = " << i << "\t value = "
+                     << currValue << "\t, Index = " << index
+                     << " in range " << logvalueranges[index] << ", " << logvalueranges[index+1]
+                     << "; Last value = " << lastvalue;
+
+              g_log.error(errmsg.str());
+              throw std::runtime_error(errmsg.str());
+            }
+          } // [In-bound: Inside interval]
+          else if (valuewithin2boundaries)
+          {
+            // [Situation] Fall between interval (which is not likley happen)
+            currindex = -1;
+            if (start.totalNanoseconds() > 0)
+            {
+              // Close the interval pair if it has been started.
+              stop = currTime;
+              createsplitter = true;
+            }
+          } // [In-bound: Between interval]
+          else if (!valuewithin2boundaries)
+          {
+            // Out of a range.
+            currindex = -1;
+            if (start.totalNanoseconds() > 0)
+            {
+              // End situation
+              stop = currTime;
+              createsplitter = true;
+            }
+            else
+            {
+              // No operation required
+              ;
+            }
+          } // [Out-bound]
+          else
+          {
+            // IMPOSSIBLE SITUATION
+            // c2) Fall out of interval
+            g_log.debug() << "DBOP Log Index " << i << "  Falls Out b/c value range... " << std::endl;
+            throw runtime_error("Is it ever reached? ");
+
+            // log value falls out of min/max: If start is defined, then define stop
+            if (start.totalNanoseconds() > 0)
+            {
+              stop = currTime;
+              createsplitter = true;
+              g_log.debug() << "DBOP Log Index [2] " << i << "  falls Out b/c value range... " << ".\n";
+            }
+          }
+        } // [CORRECT DIRECTION]
+        else
+        {
+          currindex = -1;
+          g_log.debug() << "DBOP Log Index " << i << " Falls out b/c out of wrong direction" << std::endl;
+        }
+      }
+      else
+      {
+        // Out of time range
+        currindex = -1;
+        g_log.debug() << "DBOP Log Index " << i << "  Falls Out b/c out of time range... " << std::endl;
+      }
+
+      // d) Create Splitter
+      if (createsplitter)
+      {
+        // make_splitter(start, stop, lastindex, tol);
+        makeSplitterInVector(vecSplitTime, vecSplitGroup, start, stop, lastindex, tol);
+
+        // reset
+        start = ZeroTime;
+      }
+
+      // e) Start new splitter: have to be here due to start cannot be updated before a possible splitter generated
+      if (newsplitter)
+      {
+        start = currTime;
+      }
+
+      // f) Break
+      if (breakloop)
+        break;
+
+      // e) Update loop variable
+      lastindex = currindex;
+
+      // f) Progress
+#if 0
+      size_t tmpslot = i*90/m_dblLog->size();
+      if (tmpslot > progslot)
+      {
+        progslot = tmpslot;
+        double prog = double(progslot)/100.0+0.1;
+        progress(prog);
+      }
+#endif
+
+    } // For each log value
+
+    // To fill the blanks at the end of log to make last entry of splitter is stop time
+    // To make it non-empty
+    if (vecSplitTime.size() == 0)
+    {
+      start = m_dblLog->nthTime(istart);
+      stop = m_dblLog->nthTime(iend);
+      lastindex = -1;
+      makeSplitterInVector(vecSplitTime, vecSplitGroup, start, stop, lastindex, tol);
+    }
+#if 0
+    else
+    {
+      if (vecSplitTime.back() != stop)
+      {
+        vecSplitTime.push_back(stop);
+        vecSplitGroup.push_back(-1);
+      }
+    }
+#endif
+
+    return;
+  }
+
   //-----------------------------------------------------------------------------------------------
   /** Generate filters for an integer log
-    * @param splitters :: splitting interval array
     * @param minvalue :: minimum allowed log value
     * @param maxvalue :: maximum allowed log value
     * @param filterIncrease :: include log value increasing period;
     * @param filterDecrease :: include log value decreasing period
     * @param runend :: end of run date and time
     */
-  void GenerateEventsFilter::processIntegerValueFilter(TimeSplitterType& splitters, int minvalue, int maxvalue,
-                                                       bool filterIncrease, bool filterDecrease, DateAndTime runend)
+  void GenerateEventsFilter::processIntegerValueFilter(int minvalue, int maxvalue, bool filterIncrease, bool filterDecrease,
+                                                       DateAndTime runend)
   {
-    // 1. Determine the filter mode
+    // Determine the filter mode and delta
     int delta = 0;
-    double singlemode;
+    bool singlevaluemode;
     if (minvalue == maxvalue)
     {
-      singlemode = true;
+      singlevaluemode = true;
     }
     else
     {
+      singlevaluemode = false;
+
       double deltadbl = getProperty("LogValueInterval");
-      delta = static_cast<int>(deltadbl+0.5);
+      if (isEmpty(deltadbl))
+      {
+        delta = maxvalue-minvalue;
+      }
+      else
+      {
+        delta = static_cast<int>(deltadbl+0.5);
+      }
       if (delta <= 0)
-        throw runtime_error("LogValueInterval cannot be 0 or negative for integer log.");
-      singlemode = false;
+      {
+        stringstream errss;
+        errss << "In a non-single value mode, LogValueInterval cannot be 0 or negative for integer.  "
+              << "Current input is " << deltadbl << ".";
+        throw runtime_error(errss.str());
+      }
     }
 
-    // 2. Search along log to generate splitters
+    // Search along log to generate splitters
     size_t numlogentries = m_intLog->size();
     vector<DateAndTime> times = m_intLog->timesAsVector();
     vector<int> values = m_intLog->valuesAsVector();
 
-    time_duration timetol = DateAndTime::durationFromSeconds( m_logTimeTolerance*m_timeUnitConvertFactor*1.0E-9);
+    time_duration timetol = DateAndTime::durationFromSeconds( m_logTimeTolerance*m_timeUnitConvertFactorToNS*1.0E-9);
 
     DateAndTime splitstarttime(0);
     int pregroup = -1;
 
-    g_log.debug() << "[DB] Number of log entries = " << numlogentries << ".\n";
+    g_log.debug() << "[DB] Number of integer log entries = " << numlogentries << ".\n";
 
     for (size_t i = 0; i < numlogentries; ++i)
     {
       int currvalue = values[i];
       int currgroup = -1;
 
-      // a) Determine allowed and group
+      // Determine whether this log value is allowed and then the ws group it belonged to.
       if (currvalue > maxvalue || currvalue < minvalue)
       {
         // Log value is out of range
@@ -1166,7 +1808,7 @@ namespace Algorithms
                                        (filterDecrease && values[i] <= values[i-1]))))
       {
         // First entry (regardless direction) and other entries considering change of value
-        if (singlemode)
+        if (singlevaluemode)
         {
           currgroup = 0;
         }
@@ -1178,56 +1820,58 @@ namespace Algorithms
                       << currgroup << ".\n";
       }
 
-      // b) Consider to make a splitter
+      // Make a new splitter if condition is met
       bool statuschanged;
       if (pregroup >= 0 && currgroup < 0)
       {
-        // i.  previous log is in allowed region.  but this one is not.  create a splitter
+        // previous log is in allowed region.  but this one is not.  create a splitter
         if (splitstarttime.totalNanoseconds() == 0)
           throw runtime_error("Programming logic error.");
-        make_splitter(splitstarttime, times[i], pregroup, timetol, splitters);
+        make_splitter(splitstarttime, times[i], pregroup, timetol);
 
         splitstarttime = DateAndTime(0);
         statuschanged = true;
       }
       else if (pregroup < 0 && currgroup >= 0)
       {
-        // ii.  previous log is not allowed, but this one is.  this is the start of a new splitter
+        // previous log is not allowed, but this one is.  this is the start of a new splitter
         splitstarttime = times[i];
         statuschanged = true;
       }
       else if (currgroup >= 0 && pregroup != currgroup)
       {
-        // iii. migrated to a new region
+        // migrated to a new region
         if (splitstarttime.totalNanoseconds() == 0)
           throw runtime_error("Programming logic error (1).");
-        make_splitter(splitstarttime, times[i], pregroup, timetol, splitters);
+        make_splitter(splitstarttime, times[i], pregroup, timetol);
 
         splitstarttime = times[i];
         statuschanged = true;
       }
       else
       {
-        // iv.  no need to do anything
+        // no need to do anything: status is not changed
         statuschanged = false;
       }
 
-      // c) Update
+      // Update group/pregroup
       if (statuschanged)
         pregroup = currgroup;
-    }
 
-    // 3. Create the last splitter if existing
+    } // ENDOFLOOP on time series
+
+    // Create the last splitter if existing
     if (pregroup >= 0)
     {
       // Last entry is in an allowed region.
       if (splitstarttime.totalNanoseconds() == 0)
         throw runtime_error("Programming logic error (1).");
-      make_splitter(splitstarttime, runend, pregroup, timetol, splitters);
+      make_splitter(splitstarttime, runend, pregroup, timetol);
     }
 
-    // 4. Write to the information workspace
-    if (singlemode)
+    // Write to the information workspace
+    g_log.warning() << "Consider to refactor this part with all other methods.";
+    if (singlevaluemode)
     {
       TableRow newrow = m_filterInfoWS->appendRow();
       stringstream message;
@@ -1262,7 +1906,7 @@ namespace Algorithms
       }
     }
 
-    g_log.notice() << "[DB] Number of splitters = " << splitters.size()
+    g_log.notice() << "[DB] Number of splitters = " << m_splitters.size()
                    << ", Number of split info = " << m_filterInfoWS->rowCount() << ".\n";
 
     return;
@@ -1324,6 +1968,219 @@ namespace Algorithms
     }
 
     return 0;
+  }
+
+  //----------------------------------------------------------------------------------------------
+  /**
+    */
+  void GenerateEventsFilter::addSplitter(Kernel::DateAndTime starttime, Kernel::DateAndTime stoptime,
+                                         int wsindex, string info)
+  {
+    if (m_forFastLog)
+    {
+      // For MatrixWorkspace splitter
+      // Start of splitter
+      if (m_vecSplitterTime.size() == 0)
+      {
+        // First splitter
+        m_vecSplitterTime.push_back(starttime);
+      }
+      else if (m_vecSplitterTime.back() < starttime)
+      {
+        // Splitter to insert has a gap to previous splitter
+        m_vecSplitterTime.push_back(starttime);
+        m_vecSplitterGroup.push_back(-1);
+
+      }
+      else if (m_vecSplitterTime.back() == starttime)
+      {
+        // Splitter to insert is just behind previous one (no gap): nothing
+      }
+      else
+      {
+        // Impossible situation
+        throw runtime_error("Logic error. Trying to insert a splitter, whose start time is earlier than last splitter.");
+      }
+      // Stop of splitter
+      m_vecSplitterTime.push_back(stoptime);
+      // Group
+      m_vecSplitterGroup.push_back(wsindex);
+    }
+    else
+    {
+      // For regular Splitter
+      Kernel::SplittingInterval spiv(starttime, stoptime, wsindex);
+      m_splitWS->addSplitter(spiv);
+    }
+
+    // Information
+    API::TableRow row = m_filterInfoWS->appendRow();
+    row << wsindex << info;
+
+    return;
+  }
+
+  //----------------------------------------------------------------------------------------------
+  /** Generate a new time splitter and add to a list of splitters
+    */
+  void GenerateEventsFilter::make_splitter(Kernel::DateAndTime start, Kernel::DateAndTime stop, int group, Kernel::time_duration tolerance)
+  {
+#if 0
+    Kernel::SplittingInterval newsplit(start - tolerance, stop - tolerance, group);
+    splitters.push_back(newsplit);
+#endif
+
+    if (m_forFastLog)
+    {
+      DateAndTime starttime = start-tolerance;
+      DateAndTime stoptime = stop-tolerance;
+
+      // Start time of splitter
+      if (m_vecSplitterTime.size() == 0)
+      {
+        // First value
+        m_vecSplitterTime.push_back(starttime);
+      }
+      else if (m_vecSplitterTime.back() < starttime)
+      {
+        // Stop time of previous splitter is earlier than start time of this splitter (gap)
+        m_vecSplitterTime.push_back(starttime);
+        m_vecSplitterGroup.push_back(-1);
+      }
+      else if (m_vecSplitterTime.back() > starttime)
+      {
+        // Impossible situation
+        throw runtime_error("Impossible situation.");
+      }
+      else
+      {
+        // Stop time of previous splitter is the start time of this splitter. Nothing need to do
+        ;
+      }
+
+      // Stop time of splitter
+      m_vecSplitterTime.push_back(stoptime);
+
+      // Group index
+      m_vecSplitterGroup.push_back(group);
+    }
+    else
+    {
+      // Regular
+      Kernel::SplittingInterval newsplit(start - tolerance, stop - tolerance, group);
+      m_splitters.push_back(newsplit);
+    }
+
+    return;
+  }
+
+  //----------------------------------------------------------------------------------------------
+  /** Create a splitter and add to the vector of time splitters
+    */
+  void GenerateEventsFilter::makeSplitterInVector(std::vector<Kernel::DateAndTime>& vecSplitTime, std::vector<int>& vecGroupIndex,
+                                                  Kernel::DateAndTime start, Kernel::DateAndTime stop, int group,
+                                                  Kernel::time_duration tolerance)
+  {
+    DateAndTime starttime = start-tolerance;
+    DateAndTime stoptime = stop-tolerance;
+
+    // Start time of splitter
+    if (vecSplitTime.size() == 0)
+    {
+      // First value
+      vecSplitTime.push_back(starttime);
+    }
+    else if (vecSplitTime.back() < starttime)
+    {
+      // Stop time of previous splitter is earlier than start time of this splitter (gap)
+      vecSplitTime.push_back(starttime);
+      vecGroupIndex.push_back(-1);
+    }
+    else if (vecSplitTime.back() > starttime)
+    {
+      // Impossible situation
+      throw runtime_error("Impossible situation.");
+    }
+    else
+    {
+      // Stop time of previous splitter is the start time of this splitter. Nothing need to do
+      ;
+    }
+
+    // Complete this splitter, i.e., stoptime and group
+    // Stop time of splitter
+    vecSplitTime.push_back(stoptime);
+    // Group index
+    vecGroupIndex.push_back(group);
+
+    return;
+  }
+
+
+  //----------------------------------------------------------------------------------------------
+  /** Create a matrix workspace for filter from vector of splitter time and group
+    */
+  void GenerateEventsFilter::generateSplittersInMatrixWorkspace()
+  {
+    g_log.information() << "Size of splitter vector: " << m_vecSplitterTime.size() << ", "
+                        << m_vecSplitterGroup.size() << "\n";
+
+    size_t sizex = m_vecSplitterTime.size();
+    size_t sizey = m_vecSplitterGroup.size();
+
+    if (sizex - sizey != 1)
+    {
+      throw runtime_error("Logic error on splitter vectors' size. ");
+    }
+
+    m_filterWS = API::WorkspaceFactory::Instance().create("Workspace2D", 1, sizex, sizey);
+    MantidVec& dataX = m_filterWS->dataX(0);
+    for (size_t i = 0; i < sizex; ++i)
+    {
+      dataX[i] = static_cast<double>(m_vecSplitterTime[i].totalNanoseconds());
+    }
+
+    MantidVec& dataY = m_filterWS->dataY(0);
+    for (size_t i = 0; i < sizey; ++i)
+    {
+      dataY[i] = static_cast<double>(m_vecSplitterGroup[i]);
+    }
+
+    return;
+  }
+
+  void GenerateEventsFilter::generateSplittersInMatrixWorkspaceParallel()
+  {
+    // Determine size of output matrix workspace
+    size_t numtimes = 0;
+    size_t numThreads = vecSplitterTimeSet.size();
+    for (size_t i = 0; i < numThreads; ++i)
+    {
+      numtimes += vecGroupIndexSet[i].size();
+      g_log.debug() << "[DB] Thread " << i << " have splitter = " << vecGroupIndexSet[i].size() << "\n";
+    }
+    ++ numtimes;
+
+    size_t sizex = numtimes;
+    size_t sizey = numtimes-1;
+
+    m_filterWS = API::WorkspaceFactory::Instance().create("Workspace2D", 1, sizex, sizey);
+    MantidVec& dataX = m_filterWS->dataX(0);
+    MantidVec& dataY = m_filterWS->dataY(0);
+
+    size_t index = 0;
+    for (size_t i = 0; i < numThreads; ++i)
+    {
+      for (size_t j = 0; j < vecGroupIndexSet[i].size(); ++j)
+      {
+        dataX[index] = static_cast<double>(vecSplitterTimeSet[i][j].totalNanoseconds());
+        dataY[index] = static_cast<double>(vecGroupIndexSet[i][j]);
+        ++ index;
+      }
+    }
+    dataX[index] = static_cast<double>(vecSplitterTimeSet.back().back().totalNanoseconds());
+
+    return;
   }
 
 } // namespace Mantid
