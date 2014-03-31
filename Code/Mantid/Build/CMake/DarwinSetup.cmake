@@ -26,7 +26,7 @@ if ( PYTHON_VERSION_MAJOR )
   message ( STATUS "Python version is " ${PY_VER} )
 else ()
   # Older versions of CMake don't set these variables so just assume 2.6 as before
-  set ( PY_VER 2.6 )
+  set ( PY_VER 2.7 )
 endif ()
 
 ###########################################################################
@@ -45,7 +45,8 @@ endif()
 ###########################################################################
 # Mac-specific installation setup
 ###########################################################################
-set ( CMAKE_INSTALL_PREFIX /Applications )
+set ( CMAKE_INSTALL_PREFIX "" )
+set ( CPACK_PACKAGE_EXECUTABLES MantidPlot )
 set ( INBUNDLE MantidPlot.app/ )
 # We know exactly where this has to be on Darwin
 set ( PARAVIEW_APP_DIR "/Applications/${OSX_PARAVIEW_APP}" )
@@ -101,27 +102,21 @@ execute_process(
 # Strip off any /CR or /LF
 string(STRIP ${OSX_VERSION} OSX_VERSION)
 
-if (OSX_VERSION VERSION_LESS 10.6)
-  message (FATAL_ERROR "The minimum supported version of Mac OS X is 10.6 (Snow Leopard).")
-endif()
-
-if (OSX_VERSION VERSION_GREATER 10.6 OR OSX_VERSION VERSION_EQUAL 10.6)
-  set ( OSX_CODENAME "Snow Leopard" )
-endif()
-
-if (OSX_VERSION VERSION_GREATER 10.7 OR OSX_VERSION VERSION_EQUAL 10.7)
-  set ( OSX_CODENAME "Lion")
+if (OSX_VERSION VERSION_LESS 10.8)
+  message (FATAL_ERROR "The minimum supported version of Mac OS X is 10.8 (Mountain Lion).")
 endif()
 
 if (OSX_VERSION VERSION_GREATER 10.8 OR OSX_VERSION VERSION_EQUAL 10.8)
   set ( OSX_CODENAME "Mountain Lion")
 endif()
 
+if (OSX_VERSION VERSION_GREATER 10.9 OR OSX_VERSION VERSION_EQUAL 10.9)
+  set ( OSX_CODENAME "Mavericks")
+endif()
+
 message (STATUS "Operating System: Mac OS X ${OSX_VERSION} (${OSX_CODENAME})")
 
 string (REPLACE " " "" CPACK_SYSTEM_NAME ${OSX_CODENAME})
-set ( CPACK_OSX_PACKAGE_VERSION 10.6 )
-set ( CPACK_PREFLIGHT_SCRIPT ${CMAKE_SOURCE_DIR}/Installers/MacInstaller/installer_hooks/preflight )
 
-set ( CPACK_GENERATOR PackageMaker )
+set ( CPACK_GENERATOR DragNDrop )
 
