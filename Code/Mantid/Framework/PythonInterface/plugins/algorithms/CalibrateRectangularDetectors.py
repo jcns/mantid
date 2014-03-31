@@ -142,7 +142,6 @@ class CalibrateRectangularDetectors(PythonAlgorithm):
             @param runnumer: run number (integer)
             @param extension: file extension 
         """
-        self.log().warning("Loading PreNexus for run %s" % runnumber)
         mykwargs = {}
         if kwargs.has_key("FilterByTimeStart"):
             mykwargs["ChunkNumber"] = int(kwargs["FilterByTimeStart"])

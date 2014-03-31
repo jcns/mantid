@@ -7,6 +7,7 @@
 #include <boost/algorithm/string/regex.hpp>
 #include <Poco/ActiveResult.h>
 #include <QCoreApplication>
+#include <QTime>
 
 namespace MantidQt
 {
@@ -247,6 +248,39 @@ namespace MantidQt
     }
 
     /**
+     * Opens auto-generated dialog, and executes the catalog login algorithm.
+     * Returns true if login was a success.
+     */
+    bool CatalogHelper::isValidCatalogLogin()
+    {
+      auto catalogAlgorithm = createCatalogAlgorithm("CatalogLogin");
+      API::InterfaceManager interface;
+      auto loginDialog = interface.createDialog(catalogAlgorithm.get());
+
+      if(loginDialog->exec() == QDialog::Accepted)
+      {
+        executeAsynchronously(catalogAlgorithm);
+        if (catalogAlgorithm->isExecuted()) return true;
+      }
+      return false;
+    }
+
+    /**
+     * Creates a publishing dialog GUI and runs the publishing algorithm when "Run" is pressed.
+     */
+    void CatalogHelper::catalogPublishDialog()
+    {
+      auto catalogAlgorithm = createCatalogAlgorithm("CatalogPublish");
+      API::InterfaceManager interface;
+      auto publishDialog = interface.createDialog(catalogAlgorithm.get());
+
+      if(publishDialog->exec() == QDialog::Accepted)
+      {
+        executeAsynchronously(catalogAlgorithm);
+      }
+    }
+
+    /**
      * Obtain the algorithm documentation for the given property.
      * @param properties :: A list of properties for a provided algorithm.
      * @param name       :: The name of the property to search for.
@@ -279,13 +313,19 @@ namespace MantidQt
     /**
      * Execute the given algorithm asynchronously.
      * @param algorithm :: The algorithm to execute.
+     * @param maxTime :: The maximum amount of time (in seconds) to run the thread for.
      */
-    void CatalogHelper::executeAsynchronously(const Mantid::API::IAlgorithm_sptr &algorithm)
+    void CatalogHelper::executeAsynchronously(const Mantid::API::IAlgorithm_sptr &algorithm, int maxTime)
     {
+      QTime myTimer;
+      myTimer.start();
+
       Poco::ActiveResult<bool> result(algorithm->executeAsync());
       while (!result.available())
       {
-        QCoreApplication::processEvents();
+        // Convert seconds to milliseconds.
+        if (myTimer.elapsed() >= maxTime * 1000) break;
+        else QCoreApplication::processEvents();
       }
     }
 

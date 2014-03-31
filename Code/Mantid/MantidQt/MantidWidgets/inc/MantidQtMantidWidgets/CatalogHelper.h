@@ -34,6 +34,10 @@ namespace MantidQt
           const std::map<std::string, std::string> &inputFields);
       /// Creates a time_t value from an input date ("23/06/2003") for comparison.
       time_t getTimevalue(const std::string& inputDate);
+      /// Executes the catalog login algorithm and returns true if user can login.
+      bool isValidCatalogLogin();
+      /// Create a publishing dialog.
+      void catalogPublishDialog();
 
     private:
       /// Creates an algorithm with the name provided.
@@ -42,7 +46,8 @@ namespace MantidQt
       const std::string propertyDocumentation(const std::vector<Mantid::Kernel::Property*> &properties,
           const std::string &name);
       /// Execute the given algorithm asynchronously.
-      void executeAsynchronously(const Mantid::API::IAlgorithm_sptr &algorithm);
+      void executeAsynchronously(const Mantid::API::IAlgorithm_sptr &algorithm,
+          int maxTime = atoi(Mantid::Kernel::ConfigService::Instance().getString("catalog.timeout.value").c_str()));
       /// Set the "search" properties to their related input fields.
       void setSearchProperties(const Mantid::API::IAlgorithm_sptr &catalogAlgorithm,
           const std::map<std::string, std::string> &userInputFields);
