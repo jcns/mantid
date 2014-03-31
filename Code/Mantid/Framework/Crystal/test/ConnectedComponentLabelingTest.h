@@ -61,6 +61,10 @@ private:
   public:
     MOCK_CONST_METHOD1(configureIterator, void(Mantid::API::IMDIterator* const));
     MOCK_CONST_METHOD1(isBackground, bool(Mantid::API::IMDIterator* const));
+    MockBackgroundStrategy* clone() const
+    {
+      throw std::runtime_error("Cannot clone the mock object");
+    }
     virtual ~MockBackgroundStrategy()
     {}
   };
@@ -80,6 +84,20 @@ public:
     FrameworkManager::Instance();
   }
 
+  void test_default_start_label_id()
+  {
+    ConnectedComponentLabeling ccl;
+    TSM_ASSERT_EQUALS("Start Label Id should be 1 by default", 1, ccl.getStartLabelId());
+  }
+
+  void test_set_get_start_label_id()
+  {
+    ConnectedComponentLabeling ccl;
+    const size_t startLabelId = 10;
+    ccl.startLabelingId(startLabelId);
+    TS_ASSERT_EQUALS(startLabelId, ccl.getStartLabelId())
+  }
+
   void test_1d_one_node()
   {
     IMDHistoWorkspace_sptr inWS = MDEventsTestHelper::makeFakeMDHistoWorkspace(1, 1, 1); // Single node. Simpliest possible test case
@@ -87,8 +105,10 @@ public:
     MockBackgroundStrategy mockStrategy;
     EXPECT_CALL(mockStrategy, isBackground(_)).Times(static_cast<int>(inWS->getNPoints())).WillRepeatedly(Return(false));// A filter that passes everything.
 
-    ConnectedComponentLabeling ccl;
     size_t labelingId = 1;
+    bool multiThreaded = false;
+    ConnectedComponentLabeling ccl(labelingId, multiThreaded);
+    
     ccl.startLabelingId(labelingId);
     auto outWS = ccl.execute(inWS, &mockStrategy);
 
@@ -106,9 +126,9 @@ public:
     MockBackgroundStrategy mockStrategy;
     EXPECT_CALL(mockStrategy, isBackground(_)).Times(static_cast<int>(inWS->getNPoints())).WillRepeatedly(Return(false));// A filter that passes everything.
 
-    ConnectedComponentLabeling ccl;
     size_t labelingId = 2;
-    ccl.startLabelingId(labelingId);
+    bool multiThreaded = false;
+    ConnectedComponentLabeling ccl(labelingId, multiThreaded);
     auto outWS = ccl.execute(inWS, &mockStrategy);
 
     /*
@@ -137,9 +157,9 @@ public:
     .WillOnce(Return(true)) // is background
     .WillRepeatedly(Return(false));
 
-    ConnectedComponentLabeling ccl;
     size_t labelingId = 1;
-    ccl.startLabelingId(labelingId);
+    bool multiThreaded = false;
+    ConnectedComponentLabeling ccl(labelingId, multiThreaded);
     auto outWS = ccl.execute(inWS, &mockStrategy);
 
     std::set<size_t> uniqueEntries = connection_workspace_to_set_of_labels(outWS.get());
@@ -167,9 +187,9 @@ public:
     .WillOnce(Return(true))// is background
     .WillOnce(Return(false));
 
-    ConnectedComponentLabeling ccl;
     size_t labelingId = 1;
-    ccl.startLabelingId(labelingId);
+    bool multiThreaded = false;
+    ConnectedComponentLabeling ccl(labelingId, multiThreaded);
     auto outWS = ccl.execute(inWS, &mockStrategy);
 
     std::set<size_t> uniqueEntries = connection_workspace_to_set_of_labels(outWS.get());
@@ -189,9 +209,9 @@ public:
     MockBackgroundStrategy mockStrategy;
 
     EXPECT_CALL(mockStrategy, isBackground(_)).WillRepeatedly(Return(false));// Nothing is treated as background
-    ConnectedComponentLabeling ccl;
     size_t labelingId = 1;
-    ccl.startLabelingId(labelingId);
+    bool multiThreaded = false;
+    ConnectedComponentLabeling ccl(labelingId, multiThreaded);
     auto outWS = ccl.execute(inWS, &mockStrategy);
 
     std::set<size_t> uniqueEntries = connection_workspace_to_set_of_labels(outWS.get());
@@ -220,9 +240,9 @@ public:
     .WillOnce(Return(false))
     .WillOnce(Return(true));
 
-    ConnectedComponentLabeling ccl;
     size_t labelingId = 1;
-    ccl.startLabelingId(labelingId);
+    bool multiThreaded = false;
+    ConnectedComponentLabeling ccl(labelingId, multiThreaded);
     auto outWS = ccl.execute(inWS, &mockStrategy);
 
     std::set<size_t> uniqueEntries = connection_workspace_to_set_of_labels(outWS.get());
@@ -252,9 +272,9 @@ public:
     .WillOnce(Return(false)).WillOnce(Return(true)).WillOnce(Return(false))
     .WillOnce(Return(true)).WillOnce(Return(false)).WillOnce(Return(true));
 
-    ConnectedComponentLabeling ccl;
     size_t labelingId = 1;
-    ccl.startLabelingId(labelingId);
+    bool multiThreaded = false;
+    ConnectedComponentLabeling ccl(labelingId, multiThreaded);
     auto outWS = ccl.execute(inWS, &mockStrategy);
 
     std::set<size_t> uniqueEntries = connection_workspace_to_set_of_labels(outWS.get());
@@ -312,9 +332,9 @@ public:
     // ---------- Run the cluster finding
     HardThresholdBackground strategy(backgroundSignal, NoNormalization);
 
-    ConnectedComponentLabeling ccl;
     size_t labelingId = 1;
-    ccl.startLabelingId(labelingId);
+    bool multiThreaded = false;
+    ConnectedComponentLabeling ccl(labelingId, multiThreaded);
     auto outWS = ccl.execute(inWS, &strategy);
 
     // ----------- Basic cluster checks
