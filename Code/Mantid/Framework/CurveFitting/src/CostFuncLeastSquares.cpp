@@ -286,16 +286,18 @@ void CostFuncLeastSquares::addValDerivHessian(
   double fVal = 0.0;
   if (g_log.is(Kernel::Logger::Priority::PRIO_DEBUG))
   {
-    g_log.debug() << "Jacobian:\n";
+    std::stringstream dbss;
+    dbss << "Jacobian:\n";
     for(size_t i = 0; i < ny; ++i)
     {
       for(size_t ip = 0; ip < np; ++ip)
       {
         if ( !m_function->isActive(ip) ) continue;
-        g_log.debug() << jacobian.get(i,ip) << ' ';
+        dbss << jacobian.get(i,ip) << ' ';
       }
-      g_log.debug() << "\n";
+      dbss << "\n";
     }
+    g_log.debug(dbss.str());
   }
   double sqrtw = calSqrtW(values);
   for(size_t ip = 0; ip < np; ++ip)
@@ -489,36 +491,38 @@ void CostFuncLeastSquares::calActiveCovarianceMatrix(GSLMatrix& covar, double ep
   }
   if(g_log.is(Kernel::Logger::Priority::PRIO_INFORMATION))
   {
-    g_log.information() << "== Hessian (H) ==\n";
+    std::stringstream dbss;
+    dbss << "== Hessian (H) ==\n";
     std::ios::fmtflags prevState = g_log.information().flags();
-    g_log.information() << std::left << std::fixed;
+    dbss << std::left << std::fixed;
     for(size_t i = 0; i < m_hessian.size1(); ++i)
     {
       for(size_t j = 0; j < m_hessian.size2(); ++j)
       {
-        g_log.information() << std::setw(10);
-        g_log.information() << m_hessian.get(i,j) << "  ";
+        dbss << std::setw(10)<< m_hessian.get(i,j) << "  ";
       }
-      g_log.information() << "\n";
+      dbss << "\n";
     }
+    g_log.information(dbss.str());
     g_log.information().flags(prevState);
   }
   covar = m_hessian;
   covar.invert();
   if(g_log.is(Kernel::Logger::Priority::PRIO_INFORMATION))
   {
-    g_log.information() << "== Covariance matrix (H^-1) ==\n";
+    std::stringstream dbss;
+    dbss << "== Covariance matrix (H^-1) ==\n";
     std::ios::fmtflags prevState = g_log.information().flags();
-    g_log.information() << std::left << std::fixed;
+    dbss << std::left << std::fixed;
     for(size_t i = 0; i < covar.size1(); ++i)
     {
       for(size_t j = 0; j < covar.size2(); ++j)
       {
-        g_log.information() << std::setw(10);
-        g_log.information() << covar.get(i,j) << "  ";
+        dbss << std::setw(10) << covar.get(i,j) << "  ";
       }
-      g_log.information() << "\n";
+      dbss << "\n";
     }
+    g_log.information(dbss.str());
     g_log.information().flags(prevState);
   }
 

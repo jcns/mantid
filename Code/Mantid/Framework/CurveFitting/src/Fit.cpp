@@ -626,12 +626,21 @@ namespace CurveFitting
     while (static_cast<int>(iter) < maxIterations)
     {
       iter++;
-      g_log.debug() << "Starting iteration " << iter << "\n";
+      {
+        std::stringstream ss("Starting iteration ");
+        ss <<  iter << "\n";
+        g_log.debug(ss.str());
+      }
+
       m_function->iterationStarting();
       if ( !minimizer->iterate() )
       {
         errorString = minimizer->getError();
-        g_log.debug() << "Iteration stopped. Minimizer status string=" << errorString << "\n";
+        {
+          std::stringstream ss("Iteration stopped. Minimizer status string=");
+          ss << errorString << "\n";
+          g_log.debug(ss.str());
+        }
 
         success = errorString.empty() || errorString == "success";
         if (success)
@@ -644,10 +653,20 @@ namespace CurveFitting
       m_function->iterationFinished();
       if(g_log.is(Kernel::Logger::Priority::PRIO_INFORMATION))
       {
-        g_log.debug() << "Iteration " << iter << ", cost function = " << minimizer->costFunctionVal() << "\n";
+        {
+          std::stringstream ss("Iteration ");
+          ss << iter << ", cost function = " << minimizer->costFunctionVal() << "\n";
+          g_log.debug(ss.str());
+        }
       }
     }
-    g_log.debug() << "Number of minimizer iterations=" << iter << "\n";
+    {
+      std::stringstream ss("Number of minimizer iterations=");
+      ss << iter << "\n";
+      g_log.debug(ss.str());
+    }
+
+
 
     if (static_cast<int>(iter) >= maxIterations)
     {
