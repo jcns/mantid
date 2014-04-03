@@ -1,6 +1,8 @@
+#include "MantidAPI/AnalysisDataService.h"
 #include "MantidQtCustomInterfaces/CalcCorr.h"
 #include "MantidQtCustomInterfaces/UserInputValidator.h"
 #include "MantidQtMantidWidgets/WorkspaceSelector.h"
+
 
 #include <QLineEdit>
 #include <QList>
@@ -97,10 +99,11 @@ namespace IDA
   void CalcCorr::setup()
   {
     // set signals and slot connections for F2Py Absorption routine
-    connect(uiForm().absp_cbInputType, SIGNAL(currentIndexChanged(int)), uiForm().absp_swInput, SLOT(setCurrentIndex(int)));
     connect(uiForm().absp_cbShape, SIGNAL(currentIndexChanged(int)), this, SLOT(shape(int)));
     connect(uiForm().absp_ckUseCan, SIGNAL(toggled(bool)), this, SLOT(useCanChecked(bool)));
     connect(uiForm().absp_letc1, SIGNAL(editingFinished()), this, SLOT(tcSync()));
+    connect(uiForm().absp_cbSampleInputType, SIGNAL(currentIndexChanged(int)), uiForm().absp_swSampleInputType, SLOT(setCurrentIndex(int)));
+    connect(uiForm().absp_cbCanInputType, SIGNAL(currentIndexChanged(int)), uiForm().absp_swCanInputType, SLOT(setCurrentIndex(int)));
 
     // Sort the fields into various lists.
 
@@ -190,14 +193,14 @@ namespace IDA
         size = "[" + uiForm().absp_ler1->text() + ", " +
           uiForm().absp_ler2->text() + ", 0.0, 0.0 ]";
       }
-    
     }
 
     QString width = uiForm().absp_lewidth->text();
+    QString filename = uiForm().absp_dsSampleInput->getCurrentDataName();
 
-    if ( uiForm().absp_cbInputType->currentText() == "File" )
+    if ( !Mantid::API::AnalysisDataService::Instance().doesExist(filename.toStdString()) )
     {
-      QString input = uiForm().absp_inputFile->getFirstFilename();
+      QString input = uiForm().absp_dsSampleInput->getFullFilePath();
       if ( input == "" ) { return; }
       pyInput +=
       "import os.path as op\n"
@@ -209,26 +212,85 @@ namespace IDA
     }
     else
     {
-      pyInput += "inputws = '" + uiForm().absp_wsInput->currentText() + "'\n";
+      pyInput += "inputws = '" + filename + "'\n";
     }
-  
+
+    //sample absorption and scattering x sections.
+    QString sampleScatteringXSec = uiForm().absp_lesamsigs->text();
+    QString sampleAbsorptionXSec = uiForm().absp_lesamsiga->text();
+
+    if ( sampleScatteringXSec.isEmpty() ) { sampleScatteringXSec = "0.0"; }
+    if ( sampleAbsorptionXSec.isEmpty() ) { sampleAbsorptionXSec = "0.0"; }
+
+    //can and sample formulas
+    QString sampleFormula = uiForm().absp_leSampleFormula->text();
+    QString canFormula = uiForm().absp_leSampleFormula->text();
+
+    if ( sampleFormula.isEmpty() ) 
+    { 
+      sampleFormula = "None";
+    }
+    else 
+    {
+      sampleFormula = "'" + sampleFormula + "'";
+    }
+
+    if ( canFormula.isEmpty() ) 
+    { 
+      canFormula = "None";
+    }
+    else 
+    {
+      canFormula = "'" + canFormula + "'";
+    }
+
+    //create python string to execute
     if ( uiForm().absp_ckUseCan->isChecked() )
     {
+      QString canFile = uiForm().absp_dsCanInput->getCurrentDataName();
+
+      //load the can file / get the can workspace 
+      if ( !Mantid::API::AnalysisDataService::Instance().doesExist(canFile.toStdString()) )
+      {
+        QString input = uiForm().absp_dsCanInput->getFullFilePath();
+        if ( input == "" ) { return; }
+        pyInput +=
+        "import os.path as op\n"
+        "file = r'" + input + "'\n"
+        "( dir, filename ) = op.split(file)\n"
+        "( name, ext ) = op.splitext(filename)\n"
+        "LoadNexusProcessed(Filename=file, OutputWorkspace=name)\n"
+        "canws = name\n";
+      }
+      else
+      {
+        pyInput += "inputws = '" + canFile + "'\n";
+      }
+
+      //can absoprtion and scattering x section.
+      QString canScatteringXSec = uiForm().absp_lesamsigs->text();
+      QString canAbsorptionXSec = uiForm().absp_lesamsiga->text();
+
+      if ( canScatteringXSec.isEmpty() ) { canScatteringXSec = "0.0"; }
+      if ( canAbsorptionXSec.isEmpty() ) { canAbsorptionXSec = "0.0"; }
+
       pyInput +=
         "ncan = 2\n"
         "density = [" + uiForm().absp_lesamden->text() + ", " + uiForm().absp_lecanden->text() + ", " + uiForm().absp_lecanden->text() + "]\n"
-        "sigs = [" + uiForm().absp_lesamsigs->text() + "," + uiForm().absp_lecansigs->text() + "," + uiForm().absp_lecansigs->text() + "]\n"
-        "siga = [" + uiForm().absp_lesamsiga->text() + "," + uiForm().absp_lecansiga->text() + "," + uiForm().absp_lecansiga->text() + "]\n";
+        "sigs = [" + sampleScatteringXSec + "," + canScatteringXSec + "," + canScatteringXSec + "]\n"
+        "siga = [" + sampleAbsorptionXSec + "," + canAbsorptionXSec + "," + canAbsorptionXSec + "]\n";
     }
     else
     {
       pyInput +=
         "ncan = 1\n"
         "density = [" + uiForm().absp_lesamden->text() + ", 0.0, 0.0 ]\n"
-        "sigs = [" + uiForm().absp_lesamsigs->text() + ", 0.0, 0.0]\n"
-        "siga = [" + uiForm().absp_lesamsiga->text() + ", 0.0, 0.0]\n";
+        "sigs = [" + sampleScatteringXSec + ", 0.0, 0.0]\n"
+        "siga = [" + sampleAbsorptionXSec + ", 0.0, 0.0]\n"
+        "canws = None\n";
     }
 
+    //Output options
     if ( uiForm().absp_ckVerbose->isChecked() ) pyInput += "verbose = True\n";
     else pyInput += "verbose = False\n";
 
@@ -241,7 +303,9 @@ namespace IDA
       "size = " + size + "\n"
       "avar = " + uiForm().absp_leavar->text() + "\n"
       "plotOpt = '" + uiForm().absp_cbPlotOutput->currentText() + "'\n"
-      "IndirectAbsCor.AbsRunFeeder(inputws, geom, beam, ncan, size, density, sigs, siga, avar, plotOpt=plotOpt, Save=save, Verbose=verbose)\n";
+      "sampleFormula = " + sampleFormula + "\n"
+      "canFormula = " + canFormula + "\n"
+      "IndirectAbsCor.AbsRunFeeder(inputws, canws, geom, beam, ncan, size, avar, density, sampleFormula, canFormula, sigs, siga, plotOpt=plotOpt, Save=save, Verbose=verbose)\n";
 
     QString pyOutput = runPythonCode(pyInput).trimmed();
   }
@@ -251,10 +315,12 @@ namespace IDA
     UserInputValidator uiv;
 
     // Input (file or workspace)
-    if ( uiForm().absp_cbInputType->currentText() == "File" )
-      uiv.checkMWRunFilesIsValid("Input", uiForm().absp_inputFile);
-    else
-      uiv.checkWorkspaceSelectorIsNotEmpty("Input", uiForm().absp_wsInput);
+    QString filename = uiForm().absp_dsSampleInput->getCurrentDataName();
+
+    if(filename.isEmpty())
+    {
+      uiv.addErrorMessage("You must select a Sample file or workspace.");
+    }
 
     if ( uiForm().absp_cbShape->currentText() == "Flat" )
     {
@@ -302,16 +368,45 @@ namespace IDA
     uiv.checkFieldIsValid("Beam Width", uiForm().absp_lewidth, uiForm().absp_valWidth);
 
     // Sample details
-    uiv.checkFieldIsValid("Sample Number Density",           uiForm().absp_lesamden,  uiForm().absp_valSamden);
-    uiv.checkFieldIsValid("Sample Scattering Cross-Section", uiForm().absp_lesamsigs, uiForm().absp_valSamsigs);
-    uiv.checkFieldIsValid("Sample Absorption Cross-Section", uiForm().absp_lesamsiga, uiForm().absp_valSamsiga);
+    uiv.checkFieldIsValid("Sample Number Density", uiForm().absp_lesamden, uiForm().absp_valSamden);
+
+    switch(uiForm().absp_cbSampleInputType->currentIndex())
+    {
+      case 0:
+          //using direct input
+          uiv.checkFieldIsValid("Sample Scattering Cross-Section", uiForm().absp_lesamsigs, uiForm().absp_valSamsigs);
+          uiv.checkFieldIsValid("Sample Absorption Cross-Section", uiForm().absp_lesamsiga, uiForm().absp_valSamsiga);
+        break;
+      case 1:
+          //input using formula
+          //uiv.checkFieldIsValid("Sample Cross-Section Formula", uiForm().absp_leSampleFormula, uiForm().absp_valSampleFormula);
+        break;
+    }
+
 
     // Can details (only test if "Use Can" is checked)
     if ( uiForm().absp_ckUseCan->isChecked() )
     {
-      uiv.checkFieldIsValid("Can Number Density",           uiForm().absp_lecanden,  uiForm().absp_valCanden);
-      uiv.checkFieldIsValid("Can Scattering Cross-Section", uiForm().absp_lecansigs, uiForm().absp_valCansigs);
-      uiv.checkFieldIsValid("Can Absorption Cross-Section", uiForm().absp_lecansiga, uiForm().absp_valCansiga);
+      QString canFile = uiForm().absp_dsCanInput->getCurrentDataName();
+      if(canFile.isEmpty())
+      {
+        uiv.addErrorMessage("You must select a Sample file or workspace.");
+      }
+
+      uiv.checkFieldIsValid("Can Number Density",uiForm().absp_lecanden,uiForm().absp_valCanden);
+
+      switch(uiForm().absp_cbCanInputType->currentIndex())
+      {
+        case 0:
+            // using direct input
+            uiv.checkFieldIsValid("Can Scattering Cross-Section", uiForm().absp_lecansigs, uiForm().absp_valCansigs);
+            uiv.checkFieldIsValid("Can Absorption Cross-Section", uiForm().absp_lecansiga, uiForm().absp_valCansiga);
+          break;
+        case 1:
+            //input using formula
+            //uiv.checkFieldIsValid("Can Cross-Section Formula", uiForm().absp_leCanFormula, uiForm().absp_valCanFormula);
+          break;
+      }
     }
 
     return uiv.generateErrorMessage();
@@ -319,15 +414,16 @@ namespace IDA
 
   void CalcCorr::loadSettings(const QSettings & settings)
   {
-    uiForm().absp_inputFile->readSettings(settings.group());
+    uiForm().absp_dsSampleInput->readSettings(settings.group());
+    uiForm().absp_dsCanInput->readSettings(settings.group());
   }
 
   void CalcCorr::shape(int index)
   {
     uiForm().absp_swShapeDetails->setCurrentIndex(index);
     // Meaning of the "avar" variable changes depending on shape selection
-    if ( index == 0 ) { uiForm().absp_lbAvar->setText("Can Angle to Beam"); }
-    else if ( index == 1 ) { uiForm().absp_lbAvar->setText("Step Size"); }
+    if ( index == 0 ) { uiForm().absp_lbAvar->setText("Sample Angle:"); }
+    else if ( index == 1 ) { uiForm().absp_lbAvar->setText("Step Size:"); }
   }
 
   void CalcCorr::useCanChecked(bool checked)
@@ -350,6 +446,8 @@ namespace IDA
     uiForm().absp_valCanden->setVisible(checked);
     uiForm().absp_valCansigs->setVisible(checked);
     uiForm().absp_valCansiga->setVisible(checked);
+
+    uiForm().absp_dsCanInput->setEnabled(checked);
   
     // Workaround for "disabling" title of the QGroupBox.
     QPalette palette;

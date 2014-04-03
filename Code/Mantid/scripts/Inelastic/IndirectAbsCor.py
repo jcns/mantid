@@ -84,124 +84,218 @@ def CheckDensity(density,ncan):
             sys.exit(error)
 
 def AbsRun(inputWS, geom, beam, ncan, size, density, sigs, siga, avar, Verbose, Save):
-    workdir = config['defaultsave.directory']
+    workdir = getDefaultWorkingDirectory()
+
     if Verbose:
         logger.notice('Sample run : '+inputWS)
+
+    # check that there is data
     Xin = mtd[inputWS].readX(0)
-    if len(Xin) == 0:				# check that there is data
+    if len(Xin) == 0:
         error = 'Sample file has no data'			
         logger.notice('ERROR *** '+error)
         sys.exit(error)
+
+    CheckSize(size,geom,ncan,Verbose)
+    CheckDensity(density,ncan)
+
     det = GetWSangles(inputWS)
     ndet = len(det)
     efixed = getEfixed(inputWS)
+
     wavelas = math.sqrt(81.787/efixed) # elastic wavelength
     waves = WaveRange(inputWS, efixed) # get wavelengths
     nw = len(waves)
-    CheckSize(size,geom,ncan,Verbose)
-    CheckDensity(density,ncan)
+
     run_name = getWSprefix(inputWS)
+    
     if Verbose:
         message = 'Sam : sigt = '+str(sigs[0])+' ; siga = '+str(siga[0])+' ; rho = '+str(density[0])
         logger.notice(message)
+
         if ncan == 2:
             message = 'Can : sigt = '+str(sigs[1])+' ; siga = '+str(siga[1])+' ; rho = '+str(density[1])
             logger.notice(message)
+
         logger.notice('Elastic lambda : '+str(wavelas))
+
         message = 'Lambda : '+str(nw)+' values from '+str(waves[0])+' to '+str(waves[nw-1])
         logger.notice(message)
+
         message = 'Detector angles : '+str(ndet)+' from '+str(det[0])+' to '+str(det[ndet-1])
         logger.notice(message)
-    eZ = np.zeros(nw)                  # set errors to zero
+                   
     name = run_name + geom
-    assWS = name + '_ass'
-    asscWS = name + '_assc'
-    acscWS = name + '_acsc'
-    accWS = name + '_acc'
-    fname = name +'_Abs'
-    wrk = os.path.join(workdir, run_name)
+    wrk = workdir + run_name
     wrk.ljust(120,' ')
-    for n in range(0,ndet):
+    
+    dataA1 = []
+    dataA2 = []
+    dataA3 = []
+    dataA4 = []
+
+    #initially set errors to zero
+    eZero = np.zeros(nw)
+
+    for n in range(ndet):
+        #geometry is flat
         if geom == 'flt':
             angles = [avar, det[n]]
             (A1,A2,A3,A4) = FlatAbs(ncan, size, density, sigs, siga, angles, waves)	
             kill = 0
-        if geom == 'cyl':
+
+        #geometry is a cylinder
+        elif geom == 'cyl':
             astep = avar
             if (astep) < 1e-5:
                 error = 'Step size is zero'			
                 logger.notice('ERROR *** '+error)
                 sys.exit(error)
+            
             nstep = int((size[1] - size[0])/astep)
             if nstep < 20:
                 error = 'Number of steps ( '+str(nstep)+' ) should be >= 20'			
                 logger.notice('ERROR *** '+error)
                 sys.exit(error)
+
             angle = det[n]
             kill, A1, A2, A3, A4 = cylabs.cylabs(astep, beam, ncan, size,
                 density, sigs, siga, angle, wavelas, waves, n, wrk, 0)
+
         if kill == 0:
             if Verbose:
                 logger.notice('Detector '+str(n)+' at angle : '+str(det[n])+' * successful')
-            if n == 0:
-                dataA1 = A1
-                dataA2 = A2
-                dataA3 = A3
-                dataA4 = A4
-                eZero =eZ
-            else:
-                dataA1 = np.append(dataA1,A1)
-                dataA2 = np.append(dataA2,A2)
-                dataA3 = np.append(dataA3,A3)
-                dataA4 = np.append(dataA4,A4)
-                eZero = np.append(eZero,eZ)
+
+            dataA1 = np.append(dataA1,A1)
+            dataA2 = np.append(dataA2,A2)
+            dataA3 = np.append(dataA3,A3)
+            dataA4 = np.append(dataA4,A4)
         else:
             error = 'Detector '+str(n)+' at angle : '+str(det[n])+' *** failed : Error code '+str(kill)
             logger.notice('ERROR *** '+error)
             sys.exit(error)
-## Create the workspaces
+
     dataX = waves * ndet
     qAxis = createQaxis(inputWS)
-    CreateWorkspace(OutputWorkspace=assWS, DataX=dataX, DataY=dataA1, DataE=eZero,
+
+    # Create the output workspaces
+    assWS = name + '_ass'
+    asscWS = name + '_assc'
+    acscWS = name + '_acsc'
+    accWS = name + '_acc'
+    fname = name +'_Abs'
+
+    CreateWorkspace(OutputWorkspace=assWS, DataX=dataX, DataY=dataA1,
         NSpec=ndet, UnitX='Wavelength',
         VerticalAxisUnit='MomentumTransfer', VerticalAxisValues=qAxis)
-    CreateWorkspace(OutputWorkspace=asscWS, DataX=dataX, DataY=dataA2, DataE=eZero,
+
+    CreateWorkspace(OutputWorkspace=asscWS, DataX=dataX, DataY=dataA2,
         NSpec=ndet, UnitX='Wavelength',
         VerticalAxisUnit='MomentumTransfer', VerticalAxisValues=qAxis)
-    CreateWorkspace(OutputWorkspace=acscWS, DataX=dataX, DataY=dataA3, DataE=eZero,
+
+    CreateWorkspace(OutputWorkspace=acscWS, DataX=dataX, DataY=dataA3,
         NSpec=ndet, UnitX='Wavelength',
         VerticalAxisUnit='MomentumTransfer', VerticalAxisValues=qAxis)
-    CreateWorkspace(OutputWorkspace=accWS, DataX=dataX, DataY=dataA4, DataE=eZero,
+
+    CreateWorkspace(OutputWorkspace=accWS, DataX=dataX, DataY=dataA4,
         NSpec=ndet, UnitX='Wavelength',
         VerticalAxisUnit='MomentumTransfer', VerticalAxisValues=qAxis)
-    ## Save output
+
     group = assWS +','+ asscWS +','+ acscWS +','+ accWS
     GroupWorkspaces(InputWorkspaces=group,OutputWorkspace=fname)
+
+    # save output to file if required
     if Save:
         opath = os.path.join(workdir,fname+'.nxs')
         SaveNexusProcessed(InputWorkspace=fname, Filename=opath)
+
         if Verbose:
             logger.notice('Output file created : '+opath)
+
     if ncan > 1:
         return [assWS, asscWS, acscWS, accWS]
     else:
         return [assWS]
 
-def AbsRunFeeder(inputWS, geom, beam, ncan, size, density, sigs, siga, avar,
-        plotOpt='None', Verbose=False,Save=False):
-    StartTime('CalculateCorrections')
-    '''Handles the feeding of input and plotting of output for the F2PY
-    absorption correction routine.'''
-    workspaces = AbsRun(inputWS, geom, beam, ncan, size, density,
-        sigs, siga, avar, Verbose, Save)
-    EndTime('CalculateCorrections')
-    if ( plotOpt == 'None' ):
-        return
+def plotAbs(workspaces, plotOpt):
+    if ( plotOpt == 'None' ): return
+
     if ( plotOpt == 'Wavelength' or plotOpt == 'Both' ):
         graph = mp.plotSpectrum(workspaces, 0)
+
     if ( plotOpt == 'Angle' or plotOpt == 'Both' ):
         graph = mp.plotTimeBin(workspaces, 0)
         graph.activeLayer().setAxisTitle(mp.Layer.Bottom, 'Angle')
+
+
+def AbsRunFeeder(inputWS, canWS, geom, beam, ncan, size, avar, density, sampleFormula=None, canFormula=None, sigs=None, siga=None,
+        plotOpt='None', Verbose=False,Save=False):
+    """
+        Handles the feeding of input and plotting of output for the F2PY
+        absorption correction routine.
+
+        @param inputWS - workspace to generate corrections for
+        @param geom - type of geometry used (flat plate or cylinder)
+        @param beam - beam width
+        @param ncan - number of cans used.
+        @param size - 
+        @param sampleFormula - optional, chemical formula for the sample
+        @param camFormula - optional, chemical formula for the can
+        @param density - density of the sample and cans(s)
+        @param sigs - scattering for sample and can(s)
+        @param siga - absorption for sample and can(s)
+        @param avar - 
+        @param plotOpt - whether to plot output
+        @param Verbose - whether to show extra verbose output
+        @param Save - whether to save the output to file
+    """
+
+    StartTime('CalculateCorrections')
+    CheckDensity(density,ncan)
+
+    if sampleFormula is None and (sigs is None or siga is None):
+        raise ValueError("Either a formula for the sample or values for the cross sections must be supplied.")
+
+    #set sample material based on input or formula
+    if sampleFormula is not None:
+        sigs = np.zeros(3)
+        siga = np.zeros(3)
+        SetSampleMaterial(InputWorkspace=inputWS,ChemicalFormula=sampleFormula,SampleNumberDensity=density[0])
+    else:
+        SetSampleMaterial(InputWorkspace=inputWS,AttenuationXSection=siga[0],
+            ScatteringXSection=sigs[0],SampleNumberDensity=density[0])
+    
+    sample = mtd[inputWS].sample()
+    sam_mat = sample.getMaterial()
+
+    # total scattering x-section
+    sigs[0] = sam_mat.totalScatterXSection()
+    # absorption x-section
+    siga[0] = sam_mat.absorbXSection()
+
+    if ncan == 2:
+        #set can material based on input or formula
+        if canFormula is not None:
+            SetSampleMaterial(InputWorkspace=canWS, ChemicalFormula=canFormula, SampleNumberDensity=density[0])
+        else:
+            SetSampleMaterial(InputWorkspace=canWS, AttenuationXSection=siga[1],
+                ScatteringXSection=sigs[1],SampleNumberDensity=density[1])
+
+        can = mtd[canWS].sample()
+        can_mat = sample.getMaterial()
+
+        # total scattering x-section for can
+        sigs[1] = can_mat.totalScatterXSection()
+        sigs[2] = can_mat.totalScatterXSection()
+        # absorption x-section for can
+        siga[1] = can_mat.absorbXSection()
+        siga[2] = can_mat.absorbXSection()
+
+    workspaces = AbsRun(inputWS, geom, beam, ncan, size, density,
+        sigs, siga, avar, Verbose, Save)
+    
+    EndTime('CalculateCorrections')
+    plotAbs(workspaces, plotOpt)
 
 
 # FlatAbs - calculate flat plate absorption factors
