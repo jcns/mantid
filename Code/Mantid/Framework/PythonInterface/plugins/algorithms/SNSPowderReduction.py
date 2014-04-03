@@ -491,6 +491,13 @@ class SNSPowderReduction(DataProcessorAlgorithm):
 
         return strategy
 
+    def __logChunkInfo(self, chunk):
+        keys = chunk.keys()
+        keys.sort()
+
+        keys = [ str(key) + "=" + str(chunk[key]) for key in keys ]
+        self.log().information("Working on chunk [" + ", ".join(keys) + "]")
+
     def _focusChunks(self, runnumber, extension, filterWall, calib, splitwksp=None, preserveEvents=True):
         """ Load, (optional) split and focus data in chunks
 
@@ -544,10 +551,7 @@ class SNSPowderReduction(DataProcessorAlgorithm):
             ichunk += 1
 
             # Log information
-            if "ChunkNumber" in chunk:
-                self.log().information("Working on chunk %d of %d" % (chunk["ChunkNumber"], chunk["TotalChunks"]))
-            elif "SpectrumMin" in chunk:
-                self.log().information("Working on spectrums %d through %d" % (chunk["SpectrumMin"], chunk["SpectrumMax"]))
+            self.__logChunkInfo(chunk)
 
             # Load chunk
             temp = self._loadData(runnumber, extension, filterWall, **chunk)
