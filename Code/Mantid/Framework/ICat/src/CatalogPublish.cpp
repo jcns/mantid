@@ -62,6 +62,9 @@ namespace Mantid
       declareProperty("InvestigationNumber","","The investigation number where the published file will be saved to.");
       declareProperty("DataFileDescription","","A short description of the datafile you are publishing to the catalog.");
       declareProperty("Session","","The session information of the catalog to use.");
+      declareProperty("GenerateDOI",true, "Generates a DOI for the datafile being published."
+          "Once a DOI is generated the datafile will be made public.");
+      declareProperty<int64_t>("InvestigationID",0,"The database row ID of the investigation that you want to publish to.");
     }
 
     /// Execute the algorithm
@@ -129,6 +132,14 @@ namespace Mantid
           getPropertyValue("InvestigationNumber"), getPropertyValue("NameInCatalog"), getPropertyValue("DataFileDescription")));
       // If a workspace was published, then we want to also publish the history of a workspace.
       if (!ws.empty()) publishWorkspaceHistory(catalogInfoService, workspace);
+
+      // The file was uploaded successfully. Generate a DOI if requested.
+      if (boost::lexical_cast<bool>(getPropertyValue("GenerateDOI")))
+      {
+        int64_t investigationID = getProperty("InvestigationID");
+        std::string generatedDOI = catalogInfoService->registerDatafileDOI(investigationID);
+        g_log.notice("The DOI registered for datafile " + Poco::Path(filePath).getFileName() + " was: " + generatedDOI);
+      }
     }
 
     /**
@@ -138,6 +149,9 @@ namespace Mantid
      */
     void CatalogPublish::publish(std::istream& fileContents, const std::string &uploadURL)
     {
+      // Created outside try as we need to throw a runtime later.
+      // Poco::Exception eats the runtime, then throws an I/O exception due to bug noted below.
+      std::string IDSError = "";
       try
       {
         Poco::URI uri(uploadURL);
@@ -166,17 +180,7 @@ namespace Mantid
         // Obtain the status returned by the server to verify if it was a success.
         Poco::Net::HTTPResponse::HTTPStatus HTTPStatus = response.getStatus();
         // The error message returned by the IDS (if one exists).
-        std::string IDSError = CatalogAlgorithmHelper().getIDSError(HTTPStatus, responseStream);
-        // Cancel the algorithm and display the message if it exists.
-        if(!IDSError.empty())
-        {
-          // As an error occurred we must cancel the algorithm.
-          // We cannot throw an exception here otherwise it is caught below as Poco::Exception catches runtimes,
-          // and then the I/O error is thrown as it is generated above first.
-          this->cancel();
-          // Output an appropriate error message from the JSON object returned by the IDS.
-          g_log.error(IDSError);
-        }
+        IDSError = CatalogAlgorithmHelper().getIDSError(HTTPStatus, responseStream);
       }
       catch(Poco::Net::SSLException& error)
       {
@@ -185,6 +189,9 @@ namespace Mantid
       // This is bad, but is needed to catch a POCO I/O error.
       // For more info see comments (of I/O error) in CatalogDownloadDataFiles.cpp
       catch(Poco::Exception&) {}
+
+      // Cancel the algorithm and display the message if it exists.
+      if(!IDSError.empty()) throw std::runtime_error(IDSError);
     }
 
     /**

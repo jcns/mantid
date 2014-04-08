@@ -25,6 +25,8 @@ class CatalogInfoTest : public CxxTest::TestSuite
           "<facility name=\"ISIS\">"
             "<catalog name=\"ICat3Catalog\">"
               "<soapendpoint url=\"https://facilities01.esc.rl.ac.uk:443/ICATService/ICAT\"></soapendpoint>"
+              "<externaldownload url=\"https://isisicatds.stfc.ac.uk/\"></externaldownload>"
+              "<doiendpoint url=\"https://data4.isis.stfc.ac.uk/doi/DOIService\"></doiendpoint>"
               "<filelocation>"
                 "<prefix regex=\"\\\\\\\\isis\\\\inst\\$\\\\Instruments\\$\"></prefix>"
                 "<windows replacement=\"\"></windows>"
@@ -40,6 +42,8 @@ class CatalogInfoTest : public CxxTest::TestSuite
 
       TS_ASSERT_EQUALS( catalogInfo->catalogName(), "ICat3Catalog");
       TS_ASSERT_EQUALS( catalogInfo->soapEndPoint(), "https://facilities01.esc.rl.ac.uk:443/ICATService/ICAT");
+      TS_ASSERT_EQUALS( catalogInfo->externalDownloadURL(), "https://isisicatds.stfc.ac.uk/");
+      TS_ASSERT_EQUALS( catalogInfo->doiEndPoint(), "https://data4.isis.stfc.ac.uk/doi/DOIService");
       // The regex needs escaped in order to work correctly. The output should be same as Facilities.xml (\\\\isis\\inst\$\\Instruments\$)
       TS_ASSERT_EQUALS( catalogInfo->catalogPrefix(), "\\\\\\\\isis\\\\inst\\$\\\\Instruments\\$");
       TS_ASSERT_EQUALS( catalogInfo->windowsPrefix(), "");

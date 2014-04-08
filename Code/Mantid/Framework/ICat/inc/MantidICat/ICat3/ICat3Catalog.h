@@ -62,6 +62,9 @@ namespace Mantid
       virtual void listInstruments(std::vector<std::string>& instruments);
       /// get investigationtypes list
       virtual void listInvestigationTypes(std::vector<std::string>& invstTypes);
+      /// keep alive
+      virtual void keepAlive();
+
       /// get file location strings
       virtual const std::string getFileLocation(const long long&fileid);
       /// get urls
@@ -69,8 +72,8 @@ namespace Mantid
       /// get URL of where to PUT (publish) files.
       virtual const std::string getUploadURL(
           const std::string &investigationID, const std::string &createFileName, const std::string &dataFileDescription);
-      /// keep alive
-      virtual void keepAlive();
+      /// Generate a DOI for a datafile based on the related investigation.
+      virtual const std::string registerDatafileDOI(const long long& databaseID);
 
     private:
       /// The helper class that accesses ICAT functionality.

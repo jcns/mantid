@@ -1,5 +1,6 @@
 #include "MantidAPI/CatalogFactory.h"
 #include "MantidAPI/Progress.h"
+#include "MantidICat/ICatDOI/GSoapGenerated/ICatDOIDOIPortBindingProxy.h"
 #include "MantidICat/ICat4/GSoapGenerated/ICat4ICATPortBindingProxy.h"
 #include "MantidICat/ICat4/ICat4Catalog.h"
 #include "MantidKernel/ConfigService.h"
@@ -89,7 +90,7 @@ namespace Mantid
       }
       else
       {
-        throwErrorMessage(icat);
+        throwSoapError(icat);
       }
       // Will not reach here if user cannot log in (e.g. no session is created).
       return m_session;
@@ -117,7 +118,7 @@ namespace Mantid
       }
       else
       {
-        throwErrorMessage(icat);
+        throwSoapError(icat);
       }
     }
 
@@ -294,7 +295,7 @@ namespace Mantid
       }
       else
       {
-        throwErrorMessage(icat);
+        throwSoapError(icat);
       }
     }
 
@@ -333,7 +334,7 @@ namespace Mantid
       }
       else
       {
-        throwErrorMessage(icat);
+        throwSoapError(icat);
       }
 
       g_log.debug() << "The number of paging results returned in ICat4Catalog::getNumberOfSearchResults is: " << numOfResults << std::endl;
@@ -376,7 +377,7 @@ namespace Mantid
       }
       else
       {
-        throwErrorMessage(icat);
+        throwSoapError(icat);
       }
     }
 
@@ -390,7 +391,8 @@ namespace Mantid
       if (outputws->getColumnNames().empty())
       {
         // Add rows headers to the output workspace.
-        outputws->addColumn("str","Investigation id");
+        outputws->addColumn("long64","DatabaseID");
+        outputws->addColumn("str","InvestigationID");
         outputws->addColumn("str","Facility");
         outputws->addColumn("str","Title");
         outputws->addColumn("str","Instrument");
@@ -413,6 +415,7 @@ namespace Mantid
           std::string emptyCell("");
 
           // Now add the relevant investigation data to the table (They always exist).
+          savetoTableWorkspace(investigation->id, table);
           savetoTableWorkspace(investigation->name, table);
           savetoTableWorkspace(investigation->facility->name, table);
           savetoTableWorkspace(investigation->title, table);
@@ -488,7 +491,7 @@ namespace Mantid
       }
       else
       {
-        throwErrorMessage(icat);
+        throwSoapError(icat);
       }
     }
 
@@ -554,7 +557,7 @@ namespace Mantid
       }
       else
       {
-        throwErrorMessage(icat);
+        throwSoapError(icat);
       }
     }
 
@@ -643,7 +646,7 @@ namespace Mantid
       }
       else
       {
-        throwErrorMessage(icat);
+        throwSoapError(icat);
       }
     }
 
@@ -684,7 +687,7 @@ namespace Mantid
       }
       else
       {
-        throwErrorMessage(icat);
+        throwSoapError(icat);
       }
     }
 
@@ -726,7 +729,7 @@ namespace Mantid
       }
       else
       {
-        throwErrorMessage(icat);
+        throwSoapError(icat);
       }
       return fileLocation;
     }
@@ -777,6 +780,40 @@ namespace Mantid
       return url;
     }
 
+    /**
+     * Generate a DOI for a datafile based on the related investigation.
+     * @param databaseID :: The database ID of the datafile's investigation to register the DOI for.
+     * @return The DOI that was generated for the datafile.
+     */
+    const std::string ICat4Catalog::registerDatafileDOI(const long long& databaseID)
+    {
+      ICatDOI::DOIPortBindingProxy icatDOI;
+
+      icatDOI.recv_timeout = boost::lexical_cast<int>(Kernel::ConfigService::Instance().getString("catalog.timeout.value"));
+      icatDOI.soap_endpoint = ConfigService::Instance().getFacility(m_session->getFacility()).catalogInfo().doiEndPoint().c_str();
+      setSSLContext(icatDOI);
+
+      ICatDOI::ICatDOI1__registerDatafileDOI request;
+      ICatDOI::ICatDOI1__registerDatafileDOIResponse response;
+
+      std::string session = m_session->getSessionId();
+      request.arg0 = &session;
+      request.arg1 = databaseID;
+
+      std::string registeredDOI = "";
+
+      int result = icatDOI.registerDatafileDOI(&request,&response);
+
+      if (result == 0)
+      {
+        registeredDOI = *(response.return_);
+      }
+      else
+      {
+        throwSoapError(icatDOI);
+      }
+      return registeredDOI;
+    }
 
     /**
      * Search the archive & obtain the dataset ID for a specific investigation.
@@ -815,7 +852,7 @@ namespace Mantid
       }
       else
       {
-        throwErrorMessage(icat);
+        throwSoapError(icat);
       }
 
       return datasetID;
@@ -837,16 +874,17 @@ namespace Mantid
 
       int result = icat.refresh(&request,&response);
       // An error occurred!
-      if (result != 0) throwErrorMessage(icat);
+      if (result != 0) throwSoapError(icat);
     }
 
     /**
      * Defines the SSL authentication scheme.
-     * @param icat :: ICATPortBindingProxy object.
+     * @param soapProxy :: The PortBindingProxy object.
      */
-    void ICat4Catalog::setSSLContext(ICat4::ICATPortBindingProxy& icat)
+    template<class T>
+    void ICat4Catalog::setSSLContext(T& soapProxy)
     {
-      if (soap_ssl_client_context(&icat,
+      if (soap_ssl_client_context(&soapProxy,
           SOAP_SSL_CLIENT, /* use SOAP_SSL_DEFAULT in production code */
           NULL,       /* keyfile: required only when client must authenticate to
               server (see SSL docs on how to obtain this file) */
@@ -856,19 +894,20 @@ namespace Mantid
           NULL      /* if randfile!=NULL: use a file with random data to seed randomness */
       ))
       {
-        throwErrorMessage(icat);
+        throwSoapError(soapProxy);
       }
     }
 
     /**
      * Throws an error message (returned by gsoap) to Mantid upper layer.
-     * @param icat :: ICATPortBindingProxy object.
+     * @param soapProxy :: The PortBindingProxy object.
      */
-    void ICat4Catalog::throwErrorMessage(ICat4::ICATPortBindingProxy& icat)
+    template<class T>
+    void ICat4Catalog::throwSoapError(T& soapProxy)
     {
       char buf[600];
       const int len = 600;
-      icat.soap_sprint_fault(buf,len);
+      soapProxy.soap_sprint_fault(buf,len);
       std::string error(buf);
       std::string begmsg("<message>");
       std::string endmsg("</message>");

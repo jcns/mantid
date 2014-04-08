@@ -45,6 +45,8 @@ namespace Mantid
         virtual const std::string getDownloadURL(const long long&)=0;
         /// Obtain the url to upload a file to.
         virtual const std::string getUploadURL(const std::string&,const std::string&,const std::string&)=0;
+        /// Generate a DOI for a datafile based on the related investigation.
+        virtual const std::string registerDatafileDOI(const long long&)=0;
     };
 
     typedef boost::shared_ptr<ICatalogInfoService> ICatalogInfoService_sptr;

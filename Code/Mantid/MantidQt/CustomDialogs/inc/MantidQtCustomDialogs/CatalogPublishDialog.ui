@@ -7,8 +7,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>503</width>
-    <height>269</height>
+    <width>491</width>
+    <height>289</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -165,8 +165,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>483</width>
-        <height>185</height>
+        <width>471</width>
+        <height>205</height>
        </rect>
       </property>
       <property name="sizePolicy">
@@ -242,6 +242,33 @@
              </property>
              <property name="showLoad" stdset="0">
               <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="4" column="1">
+          <layout class="QGridLayout" name="checkboxGrid">
+           <item row="0" column="0">
+            <spacer name="checkboxSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="0" column="1">
+            <widget class="QCheckBox" name="makePublic">
+             <property name="text">
+              <string>Make public</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
              </property>
             </widget>
            </item>

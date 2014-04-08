@@ -59,6 +59,9 @@ namespace Mantid
         virtual void listInstruments(std::vector<std::string>& instruments);
         /// Get investigationtypes list
         virtual void listInvestigationTypes(std::vector<std::string>& invstTypes);
+        /// Keep current session alive
+        virtual void keepAlive();
+
         /// Get the file location string(s) from archive.
         virtual const std::string getFileLocation(const long long&fileID);
         /// Get the url(s) based on the fileID.
@@ -66,14 +69,10 @@ namespace Mantid
         /// get URL of where to PUT (publish) files.
         virtual const std::string getUploadURL(
             const std::string &investigationID, const std::string &createFileName, const std::string &dataFileDescription);
-        /// Keep current session alive
-        virtual void keepAlive();
+        /// Generate a DOI for a datafile based on the related investigation.
+        virtual const std::string registerDatafileDOI(const long long& databaseID);
 
       private:
-        // Ensures human friendly error messages are provided to the user.
-        void throwErrorMessage(ICat4::ICATPortBindingProxy& icat);
-        // Defines the SSL authentication scheme.
-        void setSSLContext(ICat4::ICATPortBindingProxy& icat);
         // Saves "MyData" query result to output workspace.
         void saveInvestigations(std::vector<ICat4::xsd__anyType*> response, API::ITableWorkspace_sptr& outputws);
         // Creates a search query string based on inputs provided by the user.
@@ -93,6 +92,14 @@ namespace Mantid
 
         // Stores the session details for a specific catalog.
         API::CatalogSession_sptr m_session;
+
+        // Ensures human friendly error messages are provided to the user.
+        template<class T>
+        void throwSoapError(T& soapProxy);
+
+        // Defines the SSL authentication scheme.
+        template<class T>
+        void setSSLContext(T& soapProxy);
 
         /**
          * Template method to save data to table workspace

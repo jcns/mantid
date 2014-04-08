@@ -2,8 +2,8 @@
 
 Run the following command in order to generate a source declartion file from the SOAP endpoint:
 
-    wsdl2h -qNameOfNameSpace -o NameOfFile.h https://ICAT-uri?wsdl
-    #Example: wsdl2h -qICat4 -o ICat4Service.h https://icatisis.esc.rl.ac.uk/ICATService/ICAT?wsdl
+    wsdl2h -qNameOfNameSpace -nICatDOI -o NameOfFile.h https://ICAT-uri?wsdl
+    #Example: wsdl2h -qICat4 -nICatDOI -o ICat4Service.h https://icatisis.esc.rl.ac.uk/ICATService/ICAT?wsdl
 
 The following command will generate classes and headers based on the source file generated above:
 

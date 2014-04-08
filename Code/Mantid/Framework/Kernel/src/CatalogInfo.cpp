@@ -23,6 +23,7 @@ namespace Mantid
       m_catalogName         = getAttribute(element, "catalog", "name");
       m_soapEndPoint        = getAttribute(element, "soapendpoint", "url");
       m_externalDownloadURL = getAttribute(element, "externaldownload", "url");
+      m_doiEndPoint         = getAttribute(element, "doiendpoint", "url");
       m_catalogPrefix       = getAttribute(element, "prefix", "regex");
       m_windowsPrefix       = getAttribute(element, "windows", "replacement");
       m_macPrefix           = getAttribute(element, "mac", "replacement");
@@ -38,7 +39,7 @@ namespace Mantid
     }
 
     /**
-     * Obtain soap end point from the facility file.
+     * Obtain catalog soap end point from the facility file.
      */
     const std::string CatalogInfo::soapEndPoint() const
     {
@@ -52,6 +53,14 @@ namespace Mantid
     {
       return (m_externalDownloadURL);
     }
+
+    /**
+    * Obtain catalog name from the facility file.
+    */
+   const std::string CatalogInfo::doiEndPoint() const
+   {
+     return (m_doiEndPoint);
+   }
 
     /**
      * Obtain the regex prefix for default archive path.

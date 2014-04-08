@@ -30,12 +30,13 @@ namespace MantidQt
       tie(m_uiForm.nameInCatalogTxt,"NameInCatalog");
       tie(m_uiForm.investigationNumberCb,"InvestigationNumber");
       tie(m_uiForm.descriptionInput,"DataFileDescription");
+      tie(m_uiForm.makePublic,"GenerateDOI");
 
       // Assign the buttons with the inherited methods.
       connect(m_uiForm.runBtn,SIGNAL(clicked()),this,SLOT(accept()));
       connect(m_uiForm.cancelBtn,SIGNAL(clicked()),this,SLOT(reject()));
       connect(m_uiForm.helpBtn,SIGNAL(clicked()),this,SLOT(helpClicked()));
-      connect(m_uiForm.investigationNumberCb,SIGNAL(currentIndexChanged(int)),this,SLOT(setSessionProperty(int)));
+      connect(m_uiForm.investigationNumberCb,SIGNAL(currentIndexChanged(int)),this,SLOT(setAlgorithmProperties(int)));
       connect(m_uiForm.dataSelector,SIGNAL(dataReady(const QString&)),this,SLOT(workspaceSelected(const QString&)));
       // When a file is chosen to be published, set the related "FileName" property of the algorithm.
       connect(m_uiForm.dataSelector,SIGNAL(filesFound()),this,SLOT(fileSelected()));
@@ -72,14 +73,18 @@ namespace MantidQt
         // Populate the form with investigations that the user can publish to.
         for (size_t row = 0; row < workspace->rowCount(); row++)
         {
-          m_uiForm.investigationNumberCb->addItem(QString::fromStdString(workspace->cell<std::string>(row, 0)));
+          m_uiForm.investigationNumberCb->addItem(QString::fromStdString(workspace->getRef<std::string>("InvestigationID",row)));
           // Added tooltips to improve usability.
           m_uiForm.investigationNumberCb->setItemData(static_cast<int>(row),
-              QString::fromStdString("The title of the investigation is: \"" + workspace->cell<std::string>(row, 1) +
-                  "\".\nThe instrument of the investigation is: \"" + workspace->cell<std::string>(row, 2)) + "\".",Qt::ToolTipRole);
+            QString::fromStdString("The title of the investigation is: \"" + workspace->getRef<std::string>("Title",row) +
+              "\".\nThe instrument of the investigation is: \"" + workspace->getRef<std::string>("Instrument",row)) + "\".",
+              Qt::ToolTipRole);
           // Set the user role to the sessionID.
           m_uiForm.investigationNumberCb->setItemData(static_cast<int>(row),
-              QString::fromStdString(workspace->cell<std::string>(row, 7)),Qt::UserRole);
+            QString::fromStdString(workspace->getRef<std::string>("SessionID",row)),Qt::UserRole);
+          // Set the user role to the DatabaseID (used for registering a DOI).
+          m_uiForm.investigationNumberCb->setItemData(static_cast<int>(row),
+            QString::number(workspace->getRef<int64_t>("DatabaseID",row)),Qt::UserRole + 1);
         }
       }
       else
@@ -125,13 +130,15 @@ namespace MantidQt
     }
 
     /**
-     * Set/Update the sessionID of the `Session` property when
-     * the user selects an investigation from the combo-box.
+     * Set/Update the algorithm properties when a user selects an investigation
+     * to publish to that are not set via the GUI, e.g. Session and DatabaseID.
      */
-    void CatalogPublishDialog::setSessionProperty(int index)
+    void CatalogPublishDialog::setAlgorithmProperties(int index)
     {
       storePropertyValue("Session",
           m_uiForm.investigationNumberCb->itemData(index,Qt::UserRole).toString());
+      storePropertyValue("DatabaseID",
+          m_uiForm.investigationNumberCb->itemData(index,Qt::UserRole + 1).toString());
     }
 
     /**
