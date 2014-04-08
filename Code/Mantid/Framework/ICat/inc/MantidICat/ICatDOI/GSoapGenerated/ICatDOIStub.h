@@ -19,7 +19,7 @@ compiling, linking, and/or using OpenSSL is allowed.
 #ifndef WITH_NOGLOBAL
 #define WITH_NOGLOBAL
 #endif
-#include "stdsoap2.h"
+#include "MantidICat/GSoap/stdsoap2.h"
 #if GSOAP_VERSION != 20815
 # error "GSOAP VERSION MISMATCH IN GENERATED CODE: PLEASE REINSTALL PACKAGE"
 #endif
