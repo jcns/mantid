@@ -578,6 +578,7 @@ namespace Mantid
         outputws->addColumn("long64","File size(bytes)");
         outputws->addColumn("str","File size");
         outputws->addColumn("str","Description");
+        outputws->addColumn("str","doi");
       }
 
       std::vector<xsd__anyType*>::const_iterator iter;
@@ -601,6 +602,7 @@ namespace Mantid
           savetoTableWorkspace(&fileSize, table);
 
           if (datafile->description) savetoTableWorkspace(datafile->description, table);
+          savetoTableWorkspace(datafile->doi, table);
         }
         else
         {

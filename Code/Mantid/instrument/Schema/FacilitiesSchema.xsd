@@ -42,6 +42,11 @@
                       <xs:attribute name="url" type="xs:string"/>
                     </xs:complexType>
                   </xs:element>
+                  <xs:element name="doiendpoint">
+                    <xs:complexType>
+                      <xs:attribute name="url" type="xs:string"/>
+                    </xs:complexType>
+                  </xs:element>
                   <xs:element name="filelocation">
                     <xs:complexType>
                       <xs:element name="prefix">
