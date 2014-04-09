@@ -44,6 +44,9 @@ if ( CPPCHECK_EXECUTABLE )
   set ( CPPCHECK_EXCLUDES
         Framework/LiveData/src/LoadDAE/
         Framework/DataHandling/src/LoadRaw/
+        Framework/ICat/inc/MantidICat/ICatDOI/GSoapGenerated/
+        Framework/ICat/src/ICatDOI/GSoapGenerated/
+        Framework/ICat/src/ICatDOI/ICatDOIGSoapGenerated.cpp
         Framework/ICat/inc/MantidICat/ICat3/GSoapGenerated/
         Framework/ICat/src/ICat3/GSoapGenerated/
         Framework/ICat/src/ICat3/ICat3GSoapGenerated.cpp
