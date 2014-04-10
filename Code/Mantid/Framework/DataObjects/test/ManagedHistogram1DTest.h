@@ -47,12 +47,12 @@ public:
       TS_ASSERT( !h.isDirty() );
       h.dataX();
       TS_ASSERT( h.isDirty() );
-      ManagedHistogram1D * h2 = new ManagedHistogram1D(NULL, 1234);
+      ManagedHistogram1D h2(NULL, 1234);
       // Check that the method is properly overridden in ISpectrum
-      ISpectrum * spec = h2;
-      TS_ASSERT( !h2->isDirty() );
+      ISpectrum * spec = &h2;
+      TS_ASSERT( !h2.isDirty() );
       spec->dataX();
-      TS_ASSERT( h2->isDirty() );
+      TS_ASSERT( h2.isDirty() );
     }
     {
       ManagedHistogram1D h(NULL, 1234);
