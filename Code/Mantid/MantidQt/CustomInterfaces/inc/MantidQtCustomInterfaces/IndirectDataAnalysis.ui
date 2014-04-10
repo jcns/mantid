@@ -23,7 +23,7 @@
       <enum>QTabWidget::Rounded</enum>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>5</number>
      </property>
      <widget class="QWidget" name="tabElwin">
       <attribute name="title">
@@ -2003,7 +2003,7 @@
        <item>
         <widget class="QGroupBox" name="absp_gbCan">
          <property name="enabled">
-          <bool>false</bool>
+          <bool>true</bool>
          </property>
          <property name="title">
           <string>Can Details</string>
@@ -2040,7 +2040,7 @@
             <item row="1" column="3" colspan="2">
              <widget class="QStackedWidget" name="absp_swCanInputType">
               <property name="enabled">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
               <property name="sizePolicy">
                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -2053,7 +2053,7 @@
               </property>
               <widget class="QWidget" name="page_3">
                <property name="enabled">
-                <bool>false</bool>
+                <bool>true</bool>
                </property>
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -2070,7 +2070,7 @@
                   <item row="0" column="0">
                    <widget class="QLabel" name="absp_lbCansigs">
                     <property name="enabled">
-                     <bool>false</bool>
+                     <bool>true</bool>
                     </property>
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -2086,7 +2086,7 @@
                   <item row="0" column="1" colspan="2">
                    <widget class="QLineEdit" name="absp_lecansigs">
                     <property name="enabled">
-                     <bool>false</bool>
+                     <bool>true</bool>
                     </property>
                     <property name="text">
                      <string/>
@@ -2190,7 +2190,7 @@
             <item row="0" column="4">
              <widget class="QLabel" name="absp_valCanden">
               <property name="enabled">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
               <property name="sizePolicy">
                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
