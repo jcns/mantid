@@ -4,20 +4,19 @@
 //----------------------------------------------------------------------
 // Includes
 //----------------------------------------------------------------------
-#include "MantidKernel/DllConfig.h"
 #include "MantidKernel/Exception.h"
-#include <string>
-#include <vector>
+#include "MantidKernel/UnitLabel.h"
 #include <map>
+#include <vector>
+
 #include <boost/shared_ptr.hpp>
-#include <stdexcept>
-#include <limits>
-#include <cfloat>
 
 namespace Mantid
 {
 namespace Kernel
 {
+
+
 /** The base units (abstract) class. All concrete units should inherit from
     this class and provide implementations of the caption(), label(),
     toTOF() and fromTOF() methods. They also need to declare (but NOT define)
@@ -49,6 +48,19 @@ namespace Kernel
 class MANTID_KERNEL_DLL Unit
 {
 public:
+
+  /// (Empty) Constructor
+  Unit();
+  /// Virtual destructor
+  virtual ~Unit();
+  /// Copy Constructor
+  Unit(const Unit & other);
+  /// Copy assignment operator
+  Unit & operator=(const Unit & rhs);
+
+  /// @return a cloned instance of the other
+  virtual Unit * clone() const = 0;
+
   /// The name of the unit. For a concrete unit, this method's definition is in the DECLARE_UNIT
   /// macro and it will return the argument passed to that macro (which is the unit's key in the
   /// factory).
@@ -57,11 +69,10 @@ public:
   /// The full name of the unit
   /// @return The unit caption
   virtual const std::string caption() const = 0;
-  /// A label for the unit to be printed on axes
+
+  /// A label for the unit to be printed on axes, @see UnitLabel
   /// @return The unit label
-  virtual const std::string label() const = 0;
-  /// A label string that can contain utf-8 character encodings.
-  virtual const std::wstring utf8Label() const;
+  virtual const UnitLabel label() const = 0;
 
   // Check whether the unit can be converted to another via a simple factor
   bool quickConversion(const Unit& destination, double& factor, double& power) const;
@@ -147,16 +158,6 @@ public:
    */
   virtual double singleFromTOF(const double tof) const = 0;
 
-  /// (Empty) Constructor
-  Unit() : initialized(false), l1(0), l2(0), twoTheta(0), emode(0), efixed(0), delta(0) {}
-  /// Copy Constructor
-  Unit(const Unit & other);
-  /// Virtual destructor
-  virtual ~Unit() {}
-
-  /// @return a cloned instance of the other
-  virtual Unit * clone() const = 0;
-
   /// @return true if the unit was initialized and so can use singleToTOF()
   bool isInitialized() const
   { return initialized; }
@@ -225,19 +226,15 @@ class MANTID_KERNEL_DLL Empty : public Unit
 public:
   const std::string unitID() const; ///< "Empty"
   const std::string caption() const { return ""; }
-  const std::string label() const {return ""; }
+  const UnitLabel label() const;
 
   virtual double singleToTOF(const double x) const;
   virtual double singleFromTOF(const double tof) const;
   virtual void init();
   virtual Unit * clone() const;
-  ///@return NaN as emty unit can not be converted from TOF
-  virtual double conversionTOFMin()const
-  {return std::numeric_limits<double>::quiet_NaN();}
 
-  ///@return NaN as emty unit can not be converted from TOF
-  virtual double conversionTOFMax()const
-  {return std::numeric_limits<double>::quiet_NaN();}
+  virtual double conversionTOFMin()const;
+  virtual double conversionTOFMax()const;
 
   /// Constructor
   Empty() : Unit() {}
@@ -252,20 +249,12 @@ class MANTID_KERNEL_DLL Label : public Empty
 public:
   const std::string unitID() const; ///< "Label"
   const std::string caption() const { return m_caption; }
-  const std::string label() const {return m_label; }
+  const UnitLabel label() const;
 
   Label();
   Label(const std::string& caption, const std::string& label);
   void setLabel(const std::string& cpt, const std::string& lbl = "");
   virtual Unit * clone() const;
-
- ///@return NaN as Label can not be obtained from TOF in any reasonable manner
-  virtual double conversionTOFMin()const
-  {return std::numeric_limits<double>::quiet_NaN();}
- ///@return NaN as Label can not be obtained from TOF in any reasonable manner
-  virtual double conversionTOFMax()const
-  {return std::numeric_limits<double>::quiet_NaN();}
-
 
   /// Destructor
   ~Label() {}
@@ -273,7 +262,7 @@ private:
   /// Caption
   std::string m_caption;
   /// Label
-  std::string m_label;
+  UnitLabel m_label;
 };
 
 //=================================================================================================
@@ -283,23 +272,17 @@ class MANTID_KERNEL_DLL TOF : public Unit
 public:
   const std::string unitID() const; ///< "TOF"
   const std::string caption() const { return "Time-of-flight"; }
-  const std::string label() const {return "microsecond"; }
-  const std::wstring utf8Label() const { return L"\u03bcs"; }
+  const UnitLabel label() const;
 
+  TOF();
+  virtual void init();
   virtual double singleToTOF(const double x) const;
   virtual double singleFromTOF(const double tof) const;
-  virtual void init();
   virtual Unit * clone() const;
  ///@return -DBL_MAX as ToF convetanble to TOF for in any time range
   virtual double conversionTOFMin()const;
  ///@return DBL_MAX as ToF convetanble to TOF for in any time range
   virtual double conversionTOFMax()const;
-
-
-  /// Constructor
-  TOF() : Unit() {}
-  /// Destructor
-  ~TOF() {}
 };
 
 //=================================================================================================
@@ -309,9 +292,8 @@ class MANTID_KERNEL_DLL Wavelength : public Unit
 public:
   const std::string unitID() const; ///< "Wavelength"
   const std::string caption() const { return "Wavelength"; }
-  const std::string label() const {return "Angstrom"; }
-  const std::wstring utf8Label() const { return L"\u212b"; }
-  
+  const UnitLabel label() const;
+
   virtual double singleToTOF(const double x) const;
   virtual double singleFromTOF(const double tof) const;
   virtual void init();
@@ -340,7 +322,7 @@ class MANTID_KERNEL_DLL Energy : public Unit
 public:
   const std::string unitID() const; ///< "Energy"
   const std::string caption() const { return "Energy"; }
-  const std::string label() const {return "meV"; }
+  const UnitLabel label() const;
 
   virtual double singleToTOF(const double x) const;
   virtual double singleFromTOF(const double tof) const;
@@ -367,8 +349,7 @@ class MANTID_KERNEL_DLL Energy_inWavenumber : public Unit
 public:
   const std::string unitID() const; ///< "Energy_inWavenumber"
   const std::string caption() const { return "Energy"; }
-  const std::string label() const {return "1/cm"; }
-  const std::wstring utf8Label() const { return L"cm\u207b\u00b9"; }
+  const UnitLabel label() const;
 
   virtual double singleToTOF(const double x) const;
   virtual double singleFromTOF(const double tof) const;
@@ -394,8 +375,7 @@ class MANTID_KERNEL_DLL dSpacing : public Unit
 public:
   const std::string unitID() const; ///< "dSpacing"
   const std::string caption() const { return "d-Spacing"; }
-  const std::string label() const {return "Angstrom"; }
-  const std::wstring utf8Label() const { return L"\u212b"; }
+  const UnitLabel label() const;
 
   virtual double singleToTOF(const double x) const;
   virtual double singleFromTOF(const double tof) const;
@@ -421,8 +401,7 @@ class MANTID_KERNEL_DLL MomentumTransfer : public Unit
 public:
   const std::string unitID() const; ///< "MomentumTransfer"
   const std::string caption() const { return "q"; }
-  const std::string label() const {return "1/Angstrom"; }
-  const std::wstring utf8Label() const { return L"\u212b\u207b\u00b9"; }
+  const UnitLabel label() const;
 
   virtual double singleToTOF(const double x) const;
   virtual double singleFromTOF(const double tof) const;
@@ -447,8 +426,7 @@ class MANTID_KERNEL_DLL QSquared : public Unit
 public:
   const std::string unitID() const; ///< "QSquared"
   const std::string caption() const { return "Q2"; }
-  const std::string label() const {return "Angstrom^-2"; }
-  const std::wstring utf8Label() const { return L"\u212b\u207b\u00b2"; }
+  const UnitLabel label() const;
 
   virtual double singleToTOF(const double x) const;
   virtual double singleFromTOF(const double tof) const;
@@ -474,7 +452,7 @@ class MANTID_KERNEL_DLL DeltaE : public Unit
 public:
   virtual const std::string unitID() const; ///< "DeltaE"
   virtual const std::string caption() const { return "Energy transfer"; }
-  virtual const std::string label() const {return "meV"; }
+  const UnitLabel label() const;
 
   virtual double singleToTOF(const double x) const;
   virtual double singleFromTOF(const double tof) const;
@@ -504,9 +482,7 @@ class MANTID_KERNEL_DLL DeltaE_inWavenumber : public DeltaE
 public:
   const std::string unitID() const; ///< "DeltaE_inWavenumber"
   const std::string caption() const { return "Energy transfer"; }
-  const std::string label() const {return "1/cm"; }
-  const std::wstring utf8Label() const { return L"cm\u207b\u00b9"; }
-
+  const UnitLabel label() const;
 
   virtual void init();
   virtual Unit * clone() const;
@@ -520,41 +496,13 @@ public:
 };
 
 //=================================================================================================
-/// @cond
-// Don't document this very long winded way of getting "radians" to print on the axis.
-class Degrees : public Mantid::Kernel::Unit
-{
-  const std::string unitID() const { return ""; }
-  virtual const std::string caption() const { return "Scattering angle"; }
-  const std::string label() const { return "degrees"; }
-  virtual double singleToTOF(const double x) const { return x;}
-  virtual double singleFromTOF(const double tof) const { return tof; }
-  double conversionTOFMax()const{return DBL_MAX;}
-  double conversionTOFMin()const{return -DBL_MAX;}
-  virtual void init() {}
-
-  virtual Unit * clone() const { return new Degrees(*this); }
-};
-
-/// Class that is Phi in degrees
-class Phi : public Degrees
-{
-  virtual const std::string caption() const { return "Phi"; }
-  virtual Unit * clone() const { return new Phi(*this); }
-};
-
-/// @endcond
-
-//=================================================================================================
-//=================================================================================================
 /// Momentum in Angstrom^-1
 class MANTID_KERNEL_DLL Momentum : public Unit
 {
 public:
   const std::string unitID() const; ///< "Momentum"
   const std::string caption() const { return "Momentum"; }
-  const std::string label() const {return "Angstrom^-1"; }
-  const std::wstring utf8Label() const { return L"\u212b\u207b\u00b9"; }
+  const UnitLabel label() const;
 
   virtual double singleToTOF(const double x) const;
   virtual double singleFromTOF(const double tof) const;
@@ -583,8 +531,7 @@ class MANTID_KERNEL_DLL SpinEchoLength : public Wavelength
 public:
   const std::string unitID() const; ///< "SpinEchoLength"
   const std::string caption() const { return "Spin Echo Length"; }
-  const std::string label() const {return "nm"; }
-  const std::wstring utf8Label() const { return L"nm"; }
+  const UnitLabel label() const;
 
   virtual double singleToTOF(const double x) const;
   virtual double singleFromTOF(const double tof) const;
@@ -607,8 +554,7 @@ class MANTID_KERNEL_DLL SpinEchoTime : public Wavelength
 public:
   const std::string unitID() const; ///< "SpinEchoTime"
   const std::string caption() const { return "Spin Echo Time"; }
-  const std::string label() const {return "ns"; }
-  const std::wstring utf8Label() const { return L"ns"; }
+  const UnitLabel label() const;
 
   virtual double singleToTOF(const double x) const;
   virtual double singleFromTOF(const double tof) const;
@@ -632,8 +578,7 @@ class MANTID_KERNEL_DLL Time : public Unit
 public:
   const std::string unitID() const; ///< "Time"
   const std::string caption() const { return "t"; }
-  const std::string label() const {return "Second"; }
-  const std::wstring utf8Label() const { return L"s"; }
+  const UnitLabel label() const;
 
   virtual double singleToTOF(const double x) const;
   virtual double singleFromTOF(const double tof) const;
@@ -651,6 +596,34 @@ protected:
   double factorTo; ///< Constant factor for to conversion
   double factorFrom; ///< Constant factor for from conversion
 };
+
+//=================================================================================================
+/// Degrees that has degrees as unit at "Scattering angle" as title
+class MANTID_KERNEL_DLL Degrees : public Empty
+{
+public:
+  Degrees();
+  const std::string unitID() const { return ""; }
+  virtual const std::string caption() const { return "Scattering angle"; }
+  const UnitLabel label() const;
+
+  virtual Unit * clone() const { return new Degrees(*this); }
+private:
+  UnitLabel m_label;
+};
+
+//=================================================================================================
+
+/// Phi that has degrees as unit at "Phi" as title
+class MANTID_KERNEL_DLL Phi : public Degrees
+{
+  virtual const std::string caption() const { return "Phi"; }
+  virtual Unit * clone() const { return new Phi(*this); }
+};
+
+
+//=================================================================================================
+
 
 } // namespace Units
 

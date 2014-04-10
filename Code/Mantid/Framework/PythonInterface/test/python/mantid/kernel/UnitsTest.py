@@ -1,5 +1,5 @@
 import unittest
-from mantid.kernel import UnitFactory, Unit, Label
+from mantid.kernel import UnitFactory, Unit, Label, UnitLabel
 import types
 
 class UnitsTest(unittest.TestCase):
@@ -11,13 +11,7 @@ class UnitsTest(unittest.TestCase):
         label_unit.setLabel("Temperature", "K")
         self.assertEquals("Temperature", label_unit.caption())
         self.assertEquals("K", label_unit.label())
-
-    def test_utf8Label_is_converted_to_unicode_object(self):
-        tof = UnitFactory.Instance().create("TOF")
-        unit_lbl = tof.utf8Label()
-        self.assertTrue(isinstance(unit_lbl, types.UnicodeType))
-        self.assertEquals(u"\u03bcs", unit_lbl)
-
+        self.assertTrue(isinstance(label_unit.symbol(), UnitLabel))
 
 if __name__ == '__main__':
     unittest.main()
