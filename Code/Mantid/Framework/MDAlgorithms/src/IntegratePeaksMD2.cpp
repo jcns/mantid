@@ -300,7 +300,7 @@ namespace MDAlgorithms
 // parallelizing at this level is only marginally useful, giving about a 
 // 5-10% speedup.  Perhaps is should just be removed permanantly, but for 
 // now it is commented out to avoid the seg faults.  Refs #5533
-//PRAGMA_OMP(parallel for schedule(dynamic, 10) )
+    PRAGMA_OMP(parallel for num_threads(8) schedule(dynamic, 10) )
     for (int i=0; i < peakWS->getNumberPeaks(); ++i)
     {
       // Get a direct ref to that peak.
