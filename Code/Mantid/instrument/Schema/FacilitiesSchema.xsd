@@ -42,7 +42,7 @@
                       <xs:attribute name="url" type="xs:string"/>
                     </xs:complexType>
                   </xs:element>
-                  <xs:element name="doiendpoint">
+                  <xs:element name="doiendpoint" minOccurs="0">
                     <xs:complexType>
                       <xs:attribute name="url" type="xs:string"/>
                     </xs:complexType>
