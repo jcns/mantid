@@ -1500,6 +1500,12 @@ public:
       }
     }
 
+    // Clean the pointers
+    for (std::map<int, EventList*>::iterator im = outputs.begin(); im != outputs.end(); ++im)
+    {
+      delete im->second;
+    }
+
     return;
   }
 
@@ -1569,6 +1575,12 @@ public:
         TS_ASSERT_EQUALS( myOut->getNumberEvents(), 0);
       }
       delete myOut;
+    }
+
+    // Clean the pointers
+    for (std::map<int, EventList*>::iterator im = outputs.begin(); im != outputs.end(); ++im)
+    {
+      delete im->second;
     }
 
     return;
