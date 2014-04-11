@@ -35,7 +35,8 @@ UserSubWindow * UserSubWindowFactoryImpl::createUnwrapped(const std::string & na
   }
   catch(Mantid::Kernel::Exception::NotFoundError&)
   {
-    g_log.debug() << "\"" << name << "\" not registered as a real name, trying an alias.\n"; 
+    //FIXME: Ticket-9217 - Commented out for the moment to try and get working with clang
+    //g_log.debug() << "\"" << name << "\" not registered as a real name, trying an alias.\n";
     window = NULL;
   }
   if( !window )
@@ -94,7 +95,8 @@ UserSubWindow * UserSubWindowFactoryImpl::createFromAlias(const std::string & na
         error += ",";
       }
     }
-    g_log.error() << error << "\"\n";
+    //FIXME: Ticket-9217 - Commented out for the moment to try and get working with clang
+    //  g_log.error() << error + "\n";
     return NULL;
   }
 

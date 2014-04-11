@@ -6,7 +6,11 @@
 //----------------------------------------------------------------------
 #include "MantidKernel/Exception.h"
 #include "MantidKernel/UnitLabel.h"
+#include <vector>
 #include <map>
+#ifndef Q_MOC_RUN
+# include <boost/shared_ptr.hpp>
+#endif
 #include <vector>
 
 #include <boost/shared_ptr.hpp>
