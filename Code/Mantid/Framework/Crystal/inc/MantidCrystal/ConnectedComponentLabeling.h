@@ -6,10 +6,15 @@
 #include "MantidCrystal/DisjointElement.h"
 #include <boost/shared_ptr.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <boost/optional.hpp>
 #include <map>
 
 namespace Mantid
 {
+  namespace Kernel
+  {
+    class Logger;
+  }
 
   namespace API
   {
@@ -18,6 +23,7 @@ namespace Mantid
 
   namespace Crystal
   {
+    class Cluster;
     /**
      * Namespace containing useful typedefs
      */
@@ -29,6 +35,8 @@ namespace Mantid
       typedef std::vector<size_t> VecIndexes;
       typedef std::vector<DisjointElement> VecElements;
       typedef std::set<size_t> SetIds;
+      typedef std::map<size_t, boost::shared_ptr<Mantid::Crystal::Cluster> > ClusterMap;
+      typedef boost::tuple<Mantid::API::IMDHistoWorkspace_sptr, ClusterMap> ClusterTuple;
     }
 
     class BackgroundStrategy;
@@ -61,7 +69,7 @@ namespace Mantid
     public:
 
       /// Constructor
-      ConnectedComponentLabeling(const size_t&id = 1, const bool runMultiThreaded = true);
+      ConnectedComponentLabeling(const size_t&id = 1, const boost::optional<int> nThreads = boost::none);
 
       /// Getter for the start label id
       size_t getStartLabelId() const;
@@ -73,11 +81,9 @@ namespace Mantid
       boost::shared_ptr<Mantid::API::IMDHistoWorkspace> execute(Mantid::API::IMDHistoWorkspace_sptr ws,
           BackgroundStrategy * const strategy, Mantid::API::Progress& progress) const;
 
-      /// Execute and return clusters, as well as maps to integrated label values
-      boost::shared_ptr<Mantid::API::IMDHistoWorkspace> executeAndIntegrate(
+      /// Execute and return clusters, as well as maps to integratable clusters.
+      ConnectedComponentMappingTypes::ClusterTuple executeAndFetchClusters(
           Mantid::API::IMDHistoWorkspace_sptr ws, BackgroundStrategy * const strategy,
-          ConnectedComponentMappingTypes::LabelIdIntensityMap& labelMap,
-          ConnectedComponentMappingTypes::PositionToLabelIdMap& positionLabelMap,
           Mantid::API::Progress& progress) const;
 
       /// Destructor
@@ -89,17 +95,17 @@ namespace Mantid
       int getNThreads() const;
 
       /// Calculate the disjoint element tree across the image.
-      void calculateDisjointTree(Mantid::API::IMDHistoWorkspace_sptr ws,
-          BackgroundStrategy * const strategy, std::vector<DisjointElement>& neighbourElements,
-          ConnectedComponentMappingTypes::LabelIdIntensityMap& labelMap,
-          ConnectedComponentMappingTypes::PositionToLabelIdMap& positionLabelMap,
+      ConnectedComponentMappingTypes::ClusterMap calculateDisjointTree(Mantid::API::IMDHistoWorkspace_sptr ws,
+          BackgroundStrategy * const strategy, 
           Mantid::API::Progress& progress) const;
 
       /// Start labeling index
       size_t m_startId;
 
       /// Run multithreaded
-      const bool m_runMultiThreaded;
+      const boost::optional<int> m_nThreads;
+
+      Mantid::Kernel::Logger& m_logger;
 
     };
 
