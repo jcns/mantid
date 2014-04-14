@@ -37,6 +37,8 @@ set ( SRC_FILES
 	src/LoadIDFFromNexus.cpp
 	src/LoadILL.cpp
 	src/LoadILLIndirect.cpp
+	src/LoadILLAscii.cpp
+	src/LoadILLAsciiHelper.cpp
 	src/LoadILLSANS.cpp
 	src/LoadISISNexus.cpp
 	src/LoadISISNexus2.cpp
@@ -175,6 +177,8 @@ set ( INC_FILES
 	inc/MantidDataHandling/LoadIDFFromNexus.h
 	inc/MantidDataHandling/LoadILL.h
 	inc/MantidDataHandling/LoadILLIndirect.h
+	inc/MantidDataHandling/LoadILLAscii.h
+	inc/MantidDataHandling/LoadILLAsciiHelper.h
 	inc/MantidDataHandling/LoadILLSANS.h
 	inc/MantidDataHandling/LoadISISNexus.h
 	inc/MantidDataHandling/LoadISISNexus2.h
@@ -309,6 +313,7 @@ set ( TEST_FILES
 	LoadILLIndirectTest.h
 	LoadILLSANSTest.h
 	LoadILLTest.h
+	LoadILLAsciiTest.h
 	LoadISISNexusTest.h
 	LoadInstrumentFromRawTest.h
 	LoadInstrumentTest.h
