@@ -450,7 +450,7 @@
 
 </facility>
 
-<facility name="ILL" zeropadding="6" FileExtensions=".nxs,.hdf,.inx,.asc">
+<facility name="ILL" FileExtensions=".nxs,.hdf,.inx,.asc">
 
   <instrument name="IN4">
     <technique>Neutron Spectroscopy</technique> 
@@ -621,6 +621,21 @@
   <instrument name="ADARA_FakeEvent">
     <technique>Test Listener</technique>
     <livedata listener="FakeEventDataListener" address="127.0.0.1:0" />
+  </instrument>
+</facility>
+
+<facility name="MLZ" FileExtensions=".nxs,.hdf,.hdf5">
+
+  <instrument name="DNS">
+    <technique>Neutron Spectroscopy</technique> 
+    <technique>Reactor Direct Geometry Spectroscopy</technique>
+    <technique>Time-of-flight spectroscopy with polarization analysis</technique>
+  </instrument>
+
+  <instrument name="TOFTOF">
+    <technique>Neutron Spectroscopy</technique> 
+    <technique>Reactor Direct Geometry Spectroscopy</technique>
+    <technique>Time-of-flight spectroscopy</technique>
   </instrument>
 
 </facility>
