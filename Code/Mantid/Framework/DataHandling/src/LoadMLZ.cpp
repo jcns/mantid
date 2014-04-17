@@ -93,17 +93,12 @@ namespace DataHandling
     //declareProperty(new WorkspaceProperty<>("InputWorkspace","",Direction::Input), "An input workspace.");
     //declareProperty(new WorkspaceProperty<>("OutputWorkspace","",Direction::Output), "An output workspace.");
 
-    std::vector<std::string> exts;
-    exts.push_back(".nxs");
-    exts.push_back(".hdf");
-    exts.push_back(".hd5");
-
     declareProperty(
-          new FileProperty("Filename", "", FileProperty::Load, exts),
+          new FileProperty("Filename", "", FileProperty::Load, ".nxs"),
           "File path of the Data file to load");
 
     declareProperty(
-          new FileProperty("FilenameVanadium", "", FileProperty::OptionalLoad, exts),
+          new FileProperty("FilenameVanadium", "", FileProperty::OptionalLoad, ".nxs"),
           "File path of the Vanadium file to load (Optional)");
 
     declareProperty(
