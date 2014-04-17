@@ -1,4 +1,5 @@
 /*WIKI*
+
 Loads an MLZ Nexus file into a [[Workspace2D]] with the given name.
 
 This algorithm is under development.
@@ -74,7 +75,6 @@ namespace DataHandling
   {
   }
   
-
   //---------------------------------------------------------------------------
   /// Algorithm's name for identification. @see Algorithm::name
   const std::string LoadMLZ::name() const { return "LoadMLZ";}
@@ -85,11 +85,12 @@ namespace DataHandling
   /// Algorithm's category for identification. @see Algorithm::category
   const std::string LoadMLZ::category() const { return "DataHandling";}
 
-
+  //----------------------------------------------------------------------------------------------
   /** Initialize the algorithm's properties.
    */
   void LoadMLZ::init()
   {
+
      std::vector<std::string> exts;
      exts.push_back(".nxs");
      exts.push_back(".hdf");
@@ -114,12 +115,13 @@ namespace DataHandling
 
   }
 
-
   //---------------------------------------------------------------------------
+
   /** Execute the algorithm.
    */
   void LoadMLZ::exec()
   {
+
      // Retrieve filename
      std::string filenameData = getPropertyValue("Filename");
      //std::string filenameVanadium = getPropertyValue("FilenameVanadium");
@@ -153,7 +155,6 @@ namespace DataHandling
      setProperty("OutputWorkspace", m_localWorkspace);
   }                                                 
 
-
   /**
   * Return the confidence with with this algorithm can load the file
   * @param descriptor A descriptor for the file
@@ -161,6 +162,7 @@ namespace DataHandling
   */
   int LoadMLZ::confidence(Kernel::NexusDescriptor & descriptor) const
   {
+
      // fields existent only at the MLZ
      if (descriptor.pathExists("/Scan/wavelength")
        && descriptor.pathExists("/Scan/experiment_title")
@@ -207,6 +209,7 @@ namespace DataHandling
                 << "Calculating the elastic peak position from the Vanadium."
                 << std::endl;
            calculatedDetectorElasticPeakPosition = validateVanadium(filenameVanadium);
+
      }
      return calculatedDetectorElasticPeakPosition;
   }*/
@@ -221,12 +224,14 @@ namespace DataHandling
      std::string pmpath = "instrument/detector/pixel_mask";
 
      NeXus::NXInt pmdata = entry.openNXInt(pmpath);
+
      // load the counts from the file into memory
      pmdata.load();
      g_log.debug() << "PMdata size: " << pmdata.size() << std::endl;
      std::vector<int> masked_detectors(pmdata(), pmdata()+pmdata.size());
 
      g_log.debug() << "Number of masked detectors: " << masked_detectors.size() << std::endl;
+
 
      for (size_t i=0; i<masked_detectors.size(); i++)
      {
@@ -237,6 +242,7 @@ namespace DataHandling
      g_log.debug() << std::endl;
 
      // Need to get hold of the parameter map
+
      Geometry::ParameterMap& pmap = m_localWorkspace->instrumentParameters();
 
      // If explicitly given a list of detectors to mask, just mark those.
@@ -273,14 +279,17 @@ namespace DataHandling
 
      if (m_instrumentPath == "")
      {
+
         throw std::runtime_error("Cannot set the instrument name from the Nexus file!");
      }
 
      m_instrumentName = m_mlzloader.getStringFromNexusPath(firstEntry, m_instrumentPath + "/name");
 
      if (std::find(m_supportedInstruments.begin(), m_supportedInstruments.end(),
+
              m_instrumentName) == m_supportedInstruments.end())
      {
+
           std::string message = "The instrument " + m_instrumentName + " is not valid for this loader!";
           throw std::runtime_error(message);
      }
@@ -288,6 +297,7 @@ namespace DataHandling
      g_log.debug() << "Instrument name set to: " + m_instrumentName << std::endl;
 
    }
+
 
 
   /**
@@ -313,6 +323,8 @@ namespace DataHandling
      g_log.debug() << "NumberOfPixelsPerTube: " << m_numberOfPixelsPerTube << std::endl;
      g_log.debug() << "NumberOfChannels: " << m_numberOfChannels << std::endl;
 
+
+
       // Now create the output workspace
       // Might need to get this value from the number of monitors in the Nexus file
       // params:
@@ -320,6 +332,7 @@ namespace DataHandling
       // total number of spectra + (number of monitors = 0),
       // bin boundaries = m_numberOfChannels + 1
       // Z/time dimension
+
      m_localWorkspace = WorkspaceFactory::Instance().create("Workspace2D",
               m_numberOfHistograms, m_numberOfChannels + 1, m_numberOfChannels);
      m_localWorkspace->getAxis(0)->unit() = UnitFactory::Instance().create("TOF");
@@ -676,7 +689,6 @@ namespace DataHandling
         g_log.information("Cannot load the instrument definition.");
       }
    }
-
 
 } // namespace DataHandling
 } // namespace Mantid
