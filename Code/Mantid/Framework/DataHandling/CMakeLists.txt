@@ -46,6 +46,7 @@ set ( SRC_FILES
 	src/LoadLOQDistancesFromRaw.cpp
 	src/LoadLog.cpp
 	src/LoadLogsForSNSPulsedMagnet.cpp
+	src/LoadMLZ.cpp
 	src/LoadMappingTable.cpp
 	src/LoadMask.cpp
 	src/LoadMcStas.cpp
@@ -91,16 +92,16 @@ set ( SRC_FILES
 	src/ModifyDetectorDotDatFile.cpp
 	src/MoveInstrumentComponent.cpp
 	src/NexusTester.cpp
-  src/PDLoadCharacterizations.cpp
-  src/ProcessDasNexusLog.cpp
+	src/PDLoadCharacterizations.cpp
+	src/ProcessDasNexusLog.cpp
 	src/RawFileInfo.cpp
 	src/RemoveLogs.cpp
 	src/RenameLog.cpp
 	src/RotateInstrumentComponent.cpp
 	src/SNSDataArchive.cpp
 	src/SNSDataArchiveICAT2.cpp
-	src/SaveAscii.cpp
 	src/SaveANSTOAscii.cpp
+	src/SaveAscii.cpp
 	src/SaveAscii2.cpp
 	src/SaveCSV.cpp
 	src/SaveCalFile.cpp
@@ -112,8 +113,8 @@ set ( SRC_FILES
 	src/SaveFocusedXYE.cpp
 	src/SaveFullprofResolution.cpp
 	src/SaveGSS.cpp
-	src/SaveISISNexus.cpp
 	src/SaveILLCosmosAscii.cpp
+	src/SaveISISNexus.cpp
 	src/SaveIsawDetCal.cpp
 	src/SaveMask.cpp
 	src/SaveNISTDAT.cpp
@@ -179,6 +180,7 @@ set ( INC_FILES
 	inc/MantidDataHandling/LoadLOQDistancesFromRaw.h
 	inc/MantidDataHandling/LoadLog.h
 	inc/MantidDataHandling/LoadLogsForSNSPulsedMagnet.h
+	inc/MantidDataHandling/LoadMLZ.h
 	inc/MantidDataHandling/LoadMappingTable.h
 	inc/MantidDataHandling/LoadMask.h
 	inc/MantidDataHandling/LoadMcStas.h
@@ -219,8 +221,8 @@ set ( INC_FILES
 	inc/MantidDataHandling/ModifyDetectorDotDatFile.h
 	inc/MantidDataHandling/MoveInstrumentComponent.h
 	inc/MantidDataHandling/NexusTester.h
-  inc/MantidDataHandling/PDLoadCharacterizations.h
-  inc/MantidDataHandling/ProcessDasNexusLog.h
+	inc/MantidDataHandling/PDLoadCharacterizations.h
+	inc/MantidDataHandling/ProcessDasNexusLog.h
 	inc/MantidDataHandling/RawFileInfo.h
 	inc/MantidDataHandling/RemoveLogs.h
 	inc/MantidDataHandling/RenameLog.h
@@ -240,8 +242,8 @@ set ( INC_FILES
 	inc/MantidDataHandling/SaveFocusedXYE.h
 	inc/MantidDataHandling/SaveFullprofResolution.h
 	inc/MantidDataHandling/SaveGSS.h
-	inc/MantidDataHandling/SaveISISNexus.h
 	inc/MantidDataHandling/SaveILLCosmosAscii.h
+	inc/MantidDataHandling/SaveISISNexus.h
 	inc/MantidDataHandling/SaveIsawDetCal.h
 	inc/MantidDataHandling/SaveMask.h
 	inc/MantidDataHandling/SaveNISTDAT.h
@@ -304,6 +306,7 @@ set ( TEST_FILES
 	LoadIsawDetCalTest.h
 	LoadLLBTest.h
 	LoadLogTest.h
+	LoadMLZTest.h
 	LoadMappingTableTest.h
 	LoadMaskTest.h
 	LoadMcStasNexusTest.h
@@ -343,8 +346,8 @@ set ( TEST_FILES
 	ModifyDetectorDotDatFileTest.h
 	MoveInstrumentComponentTest.h
 	NexusTesterTest.h
-  PDLoadCharacterizationsTest.h
-  ProcessDasNexusLogTest.h
+	PDLoadCharacterizationsTest.h
+	ProcessDasNexusLogTest.h
 	RawFileInfoTest.h
 	RemoveLogsTest.h
 	RenameLogTest.h
