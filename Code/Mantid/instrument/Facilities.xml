@@ -624,6 +624,7 @@
   </instrument>
 </facility>
 
+<!-- MLZ facility-->
 <facility name="MLZ" FileExtensions=".nxs,.hdf,.hdf5">
 
   <instrument name="DNS">
