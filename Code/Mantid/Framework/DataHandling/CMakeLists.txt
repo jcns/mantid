@@ -54,6 +54,7 @@ set ( SRC_FILES
 	src/LoadLLB.cpp
 	src/LoadLog.cpp
 	src/LoadLogsForSNSPulsedMagnet.cpp
+	src/LoadMLZ.cpp
 	src/LoadMappingTable.cpp
 	src/LoadMask.cpp
 	src/LoadMcStas.cpp
@@ -107,6 +108,7 @@ set ( SRC_FILES
 	src/RenameLog.cpp
 	src/RotateInstrumentComponent.cpp
 	src/SNSDataArchive.cpp
+	src/SNSDataArchiveICAT2.cpp
 	src/SaveANSTOAscii.cpp
 	src/SaveAscii.cpp
 	src/SaveAscii2.cpp
@@ -200,6 +202,7 @@ set ( INC_FILES
 	inc/MantidDataHandling/LoadLLB.h
 	inc/MantidDataHandling/LoadLog.h
 	inc/MantidDataHandling/LoadLogsForSNSPulsedMagnet.h
+	inc/MantidDataHandling/LoadMLZ.h
 	inc/MantidDataHandling/LoadMappingTable.h
 	inc/MantidDataHandling/LoadMask.h
 	inc/MantidDataHandling/LoadMcStas.h
@@ -338,6 +341,7 @@ set ( TEST_FILES
 	LoadIsawDetCalTest.h
 	LoadLLBTest.h
 	LoadLogTest.h
+	LoadMLZTest.h
 	LoadMappingTableTest.h
 	LoadMaskTest.h
 	LoadMcStasNexusTest.h
