@@ -95,8 +95,8 @@ set ( SRC_FILES
 	src/ModifyDetectorDotDatFile.cpp
 	src/MoveInstrumentComponent.cpp
 	src/NexusTester.cpp
-  src/PDLoadCharacterizations.cpp
-  src/ProcessDasNexusLog.cpp
+	src/PDLoadCharacterizations.cpp
+	src/ProcessDasNexusLog.cpp
 	src/RawFileInfo.cpp
 	src/RemoveLogs.cpp
 	src/RenameLog.cpp
