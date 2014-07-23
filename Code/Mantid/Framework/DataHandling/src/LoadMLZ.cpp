@@ -104,7 +104,6 @@ namespace DataHandling
 
     declareProperty(
           new FileProperty("FilenameVanadium", "", FileProperty::OptionalLoad, exts),
-
           "File path of the Vanadium file to load (Optional)");
 
     declareProperty(
