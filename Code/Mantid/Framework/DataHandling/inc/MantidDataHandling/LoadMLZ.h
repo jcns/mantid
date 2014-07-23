@@ -48,11 +48,16 @@ namespace DataHandling
     virtual int version() const;
     virtual const std::string category() const;
 
+    ///Summary of algorithms purpose
+    virtual const std::string summary() const {
+      return "Loads a MLZ nexus file.";
+    }
+
     /// Returns a confidence value that this algorithm can load a file
     int confidence(Kernel::NexusDescriptor & descriptor) const;
 
   private:
-    virtual void initDocs();
+    //virtual void initDocs();
     void init();
     void exec();
 
