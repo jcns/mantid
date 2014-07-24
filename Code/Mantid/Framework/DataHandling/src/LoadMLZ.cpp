@@ -78,14 +78,6 @@ namespace DataHandling
   const std::string LoadMLZ::category() const { return "DataHandling";}
 
   //----------------------------------------------------------------------------------------------
-  /// Sets documentation strings for this algorithm
-  //void LoadMLZ::initDocs()
-  //{
-  //  this->setWikiSummary("Loads an MLZ nexus file");
-  //  this->setOptionalMessage("Loads an MLZ nexus file");
-  //}
-
-  //----------------------------------------------------------------------------------------------
   /** Initialize the algorithm's properties.
    */
   void LoadMLZ::init()
