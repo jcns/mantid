@@ -1,8 +1,0 @@
-<?xml version="1.0"?>
-<detector-masking>
-	<group>
-    <detids>
-      1007-1023
-		</detids>
-	</group>
-</detector-masking>
