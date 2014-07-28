@@ -1,4 +1,10 @@
 /*WIKI*
+Loads an MLZ Nexus file into a [[Workspace2D]] with the given name.
+
+This algorithm is under development.
+
+To date this algorithm supports: TOFTOF.
+
 TODO: Enter a full wiki-markup description of your algorithm here. You can then use the Build/wiki_maker.py script to generate your full wiki page.
 *WIKI*/
 
@@ -53,6 +59,8 @@ namespace DataHandling
      m_numberOfTubes = 0;
      m_numberOfPixelsPerTube = 0;
      m_monitorElasticPeakPosition = 0;
+     m_monitorCounts = 0;
+     m_timeOfFlightDelay = 0;
      m_l1 = 0;
      m_l2 = 0;
      m_supportedInstruments.push_back("TOFTOF");
@@ -139,16 +147,18 @@ namespace DataHandling
       runLoadInstrument(); // just to get IDF contents
       initInstrumentSpecific();
 
-      int calculatedDetectorElasticPeakPosition = getEPPFromVanadium(filenameVanadium,vanaWS);
+      // int calculatedDetectorElasticPeakPosition = getEPPFromVanadium(filenameVanadium,vanaWS);
 
-      loadDataIntoTheWorkSpace(dataFirstEntry,calculatedDetectorElasticPeakPosition);
+      //loadDataIntoTheWorkSpace(dataFirstEntry,calculatedDetectorElasticPeakPosition);
+
+      loadDataIntoTheWorkSpace(dataFirstEntry,m_monitorElasticPeakPosition);
 
       loadRunDetails(dataFirstEntry);
       loadExperimentDetails(dataFirstEntry);
       maskDetectors(dataFirstEntry);
 
       // load the instrument from the IDF if it exists
-      runLoadInstrument();
+      //runLoadInstrument();
 
       // Set the output workspace property
       setProperty("OutputWorkspace", m_localWorkspace);
@@ -233,7 +243,7 @@ namespace DataHandling
 
  void LoadMLZ::maskDetectors(NeXus::NXEntry& entry) {
      // path to the pixel_mask
-     std::string pmpath = "instrument/Detector/pixel_mask";
+     std::string pmpath = "instrument/detector/pixel_mask";
 
      NeXus::NXInt pmdata = entry.openNXInt(pmpath);
      //g_log.debug() << "PMdata size: " << pmdata.size() << std::endl;
@@ -340,12 +350,12 @@ namespace DataHandling
       NXData dataGroup = entry.openNXData("data");
       NXInt data = dataGroup.openIntData();
 
-      if (m_instrumentName == "TOFTOF") {
+      /*  if (m_instrumentName == "TOFTOF") {
           m_numberOfTubes = 1006;
       }
-      else {
-          m_numberOfTubes = static_cast<size_t>(data.dim0());
-      }
+      else {*/
+      m_numberOfTubes = static_cast<size_t>(data.dim0());
+	  // }
       m_numberOfPixelsPerTube = static_cast<size_t>(data.dim1());
       m_numberOfChannels = static_cast<size_t>(data.dim2());
 
@@ -408,6 +418,8 @@ namespace DataHandling
                throw std::runtime_error(message);
            }
 
+           m_monitorCounts = entry.getInt(monitorName + "/monitor_counts");
+
            m_monitorElasticPeakPosition = entry.getInt(monitorName + "/elasticpeak");
 
            NXFloat time_of_flight_data = entry.openNXFloat(monitorName + "/time_of_flight");
@@ -416,12 +428,15 @@ namespace DataHandling
            // The entry "monitor/time_of_flight", has 3 fields:
            // channel width [microseconds], number of channels, Time of flight delay
            m_channelWidth = time_of_flight_data[0];
-           //	m_timeOfFlightDelay = time_of_flight_data[2];
+           m_channelWidth = time_of_flight_data[0]*50.e-3;
+           m_timeOfFlightDelay = time_of_flight_data[2]*50.e-3;
 
            g_log.debug("Nexus Data:");
+           g_log.debug() << " MonitorCounts: " << m_monitorCounts << std::endl;
            g_log.debug() << " ChannelWidth: " << m_channelWidth << std::endl;
            g_log.debug() << " Wavelength: " << m_wavelength << std::endl;
            g_log.debug() << " ElasticPeakPosition: " << m_monitorElasticPeakPosition << std::endl;
+           g_log.debug() << " TimeOfFlightDelay (microseconds): " <<  m_timeOfFlightDelay<< std::endl;
 
    }
 
@@ -484,6 +499,10 @@ namespace DataHandling
                             std::string temperature = boost::lexical_cast<std::string>(
                               entry.getFloat("sample/temperature"));
                             runDetails.addProperty("temperature", temperature);
+
+                            //MonitorCounts
+    std::string monitorCounts = boost::lexical_cast<std::string>(m_monitorCounts);
+    runDetails.addProperty("monitor_counts", monitorCounts);
                           }
 
                           /*

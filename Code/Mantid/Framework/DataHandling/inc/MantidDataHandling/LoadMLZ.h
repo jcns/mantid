@@ -100,6 +100,8 @@ namespace DataHandling
     int m_monitorElasticPeakPosition;
     double m_wavelength;
     double m_channelWidth;
+    double m_timeOfFlightDelay;
+    int m_monitorCounts;
 
     double m_l1; //=2.0;
     double m_l2; //=4.0;
