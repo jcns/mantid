@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- For help on the notation used to specify an Instrument Definition File see http://www.mantidproject.org/IDF -->
-<instrument name="TOFTOF" valid-from="1900-01-31 23:59:59" valid-to="2100-01-31 23:59:59" last-modified="2014-07-15 07:58:52">
+<instrument name="TOFTOF" valid-from="1900-01-31 23:59:59" valid-to="2100-01-31 23:59:59" last-modified="2014-07-30 08:25:04">
   <!-- Author: c.durniak@fz-juelich.de -->
   <defaults>
     <length unit="meter" />
@@ -14,7 +14,7 @@
     </reference-frame>
   </defaults>
   <component type="moderator">
-    <location />
+    <location z="-1.4" />
   </component>
   <type name="moderator" is="Source"></type>
   <!-- Sample position -->
