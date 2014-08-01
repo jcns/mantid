@@ -75,6 +75,7 @@ namespace DataHandling
   {
   }
   
+
   //---------------------------------------------------------------------------
   /// Algorithm's name for identification. @see Algorithm::name
   const std::string LoadMLZ::name() const { return "LoadMLZ";}
@@ -85,7 +86,8 @@ namespace DataHandling
   /// Algorithm's category for identification. @see Algorithm::category
   const std::string LoadMLZ::category() const { return "DataHandling";}
 
-  //----------------------------------------------------------------------------------------------
+  //---------------------------------------------------------------------------
+
   /** Initialize the algorithm's properties.
    */
   void LoadMLZ::init()
@@ -100,7 +102,8 @@ namespace DataHandling
           new FileProperty("Filename", "", FileProperty::Load, exts),
           "File path of the Data file to load");
 
-   /*  declareProperty(
+
+   /* declareProperty(
           new FileProperty("FilenameVanadium", "", FileProperty::OptionalLoad, exts),
           "File path of the Vanadium file to load (Optional)");
 
@@ -115,8 +118,8 @@ namespace DataHandling
 
   }
 
-  //---------------------------------------------------------------------------
 
+  //---------------------------------------------------------------------------
   /** Execute the algorithm.
    */
   void LoadMLZ::exec()
@@ -127,11 +130,13 @@ namespace DataHandling
      //std::string filenameVanadium = getPropertyValue("FilenameVanadium");
      //MatrixWorkspace_sptr vanaWS = getProperty("WorkspaceVanadium");
 
+
      // open the root node
      NeXus::NXRoot dataRoot(filenameData);
      NXEntry dataFirstEntry = dataRoot.openFirstEntry();
 
      loadInstrumentDetails(dataFirstEntry);
+     //loadMaskedDetectors(dataFirstEntry);
      loadTimeDetails(dataFirstEntry);
      initWorkSpace(dataFirstEntry);
 
@@ -155,6 +160,7 @@ namespace DataHandling
      setProperty("OutputWorkspace", m_localWorkspace);
   }                                                 
 
+
   /**
   * Return the confidence with with this algorithm can load the file
   * @param descriptor A descriptor for the file
@@ -177,11 +183,12 @@ namespace DataHandling
   }
 
 
-  /*
+  /**
    * Get the elastic peak position (EPP) from a Vanadium Workspace
    * or filename.
    * Returns the EPP
    */
+
  /*  int LoadMLZ::getEPPFromVanadium(const std::string &filenameVanadium, MatrixWorkspace_sptr vanaWS)
    {
      int calculatedDetectorElasticPeakPosition = -1;
@@ -210,10 +217,10 @@ namespace DataHandling
                 << std::endl;
            calculatedDetectorElasticPeakPosition = validateVanadium(filenameVanadium);
 
+
      }
      return calculatedDetectorElasticPeakPosition;
   }*/
-
 
   /**
    * Loads Masked detectors from the /Scan/instrument/Detector/pixel_mask
@@ -242,6 +249,7 @@ namespace DataHandling
      g_log.debug() << std::endl;
 
      // Need to get hold of the parameter map
+
 
      Geometry::ParameterMap& pmap = m_localWorkspace->instrumentParameters();
 
@@ -300,6 +308,7 @@ namespace DataHandling
 
 
 
+
   /**
    * Creates the workspace and initialises member variables with
    * the corresponding values
@@ -324,7 +333,6 @@ namespace DataHandling
      g_log.debug() << "NumberOfChannels: " << m_numberOfChannels << std::endl;
 
 
-
       // Now create the output workspace
       // Might need to get this value from the number of monitors in the Nexus file
       // params:
@@ -347,9 +355,15 @@ namespace DataHandling
    */
   void LoadMLZ::initInstrumentSpecific()
   {
-     // Read data from IDF: distance source-sample and distance sample-detectors
+
      m_l1 = m_mlzloader.getL1(m_localWorkspace);
-     m_l2 = m_mlzloader.getL2(m_localWorkspace);
+     // this will be mainly for IN5 (flat PSD detector)
+     m_l2 = m_mlzloader.getInstrumentProperty(m_localWorkspace,"l2");
+     if (m_l2 == EMPTY_DBL())
+     {
+        g_log.debug("Calculating L2 from the IDF.");
+        m_l2 = m_mlzloader.getL2(m_localWorkspace);
+     }
 
      g_log.debug() << "L1: " << m_l1 << ", L2: " << m_l2 << std::endl;
   }
@@ -377,12 +391,14 @@ namespace DataHandling
            throw std::runtime_error(message);
         }
 
+
      m_monitorCounts = entry.getInt(monitorName + "/monitor_counts");
 
      m_monitorElasticPeakPosition = entry.getInt(monitorName + "/elasticpeak");
 
      NXFloat time_of_flight_data = entry.openNXFloat(monitorName + "/time_of_flight");
      time_of_flight_data.load();
+
 
      // The entry "monitor/time_of_flight", has 3 fields:
      // channel width [microseconds], number of channels, Time of flight delay
@@ -428,6 +444,7 @@ namespace DataHandling
      double ei = m_mlzloader.calculateEnergy(m_wavelength);
      runDetails.addProperty<double>("Ei", ei, true); //overwrite
 
+
      std::string duration = boost::lexical_cast<std::string>(
                                    entry.getFloat("duration"));
      runDetails.addProperty("duration", duration);
@@ -447,6 +464,7 @@ namespace DataHandling
      // Check if temperature is defined
      NXClass sample = entry.openNXGroup("sample");
      if ( sample.containsDataSet("temperature") )
+
      {
      std::string temperature = boost::lexical_cast<std::string>(
      entry.getFloat("sample/temperature"));
@@ -479,7 +497,7 @@ namespace DataHandling
   }
 
 
-  /*
+  /**
    * Gets the experimental Elastic Peak Position in the dectector
    * as the value parsed from the nexus file might be wrong.
    *
@@ -490,6 +508,7 @@ namespace DataHandling
    * @param data :: spectra data
    * @return detector Elastic Peak Position
    */
+
 //  int LoadMLZ::getDetectorElasticPeakPosition(const NeXus::NXInt &data)
 //  {
 //     // j = index in the equatorial line (256/2=128)
@@ -549,6 +568,10 @@ namespace DataHandling
 
 //  }
 
+
+     //set it as a Property
+     API::Run & runDetails = m_localWorkspace->mutableRun();
+     runDetails.addProperty("EPP", calculatedDetectorElasticPeakPosition);
 
   /*
    * Loads the vanadium nexus file and cross checks it against the
@@ -617,6 +640,9 @@ namespace DataHandling
                                      + m_mlzloader.calculateTOF(m_l2,m_wavelength))
                                     * 1e6; //microsecs
 
+
+
+
      g_log.debug() << "Tof1: " << m_mlzloader.calculateTOF(m_l1,m_wavelength)  << ", Tof2:" << m_mlzloader.calculateTOF(m_l2,m_wavelength) << std::endl;
 
      // Calculate the real tof (t1+t2) put it in tof array
@@ -627,13 +653,16 @@ namespace DataHandling
            detectorTofBins[i] = theoreticalElasticTOF
                                 + m_channelWidth
                                 * static_cast<double>(static_cast<int>(i) - ElasticPeakPosition);
+
                                 - m_channelWidth / 2; // to make sure the bin is in the middle of the elastic peak
         }
+
 
      g_log.information() << "T1+T2 : Theoretical = " << theoreticalElasticTOF;
      g_log.information() << " ::  Calculated bin = ["
                          << detectorTofBins[ElasticPeakPosition] << ","
                          << detectorTofBins[ElasticPeakPosition + 1] << "]"
+
                          << std::endl;
 
      // Assign calculated bins to first X axis
@@ -658,6 +687,38 @@ namespace DataHandling
            // Assign Error
            MantidVec& E = m_localWorkspace->dataE(spec);
            std::transform(data_p, data_p + m_numberOfChannels, E.begin(),LoadMLZ::calculateError);
+
+
+           ++spec;
+           progress.report();
+        }
+     }
+  }
+
+
+  /**
+   * Run the Child Algorithm LoadInstrument.
+   */
+  void LoadMLZ::runLoadInstrument()
+  {
+
+     IAlgorithm_sptr loadInst = createChildAlgorithm("LoadInstrument");
+
+     // Now execute the Child Algorithm. Catch and log any error, but don't stop.
+     try
+     {
+        // TODO: depending on the m_numberOfPixelsPerTube we might need to load a different IDF
+
+        loadInst->setPropertyValue("InstrumentName", m_instrumentName);
+        g_log.debug() << "InstrumentName" << m_instrumentName << std::endl;
+        loadInst->setProperty<MatrixWorkspace_sptr>("Workspace", m_localWorkspace);
+        loadInst->execute();
+     }
+     catch (...)
+     {
+        g_log.information("Cannot load the instrument definition.");
+      }
+   }
 
            ++spec;
            progress.report();
