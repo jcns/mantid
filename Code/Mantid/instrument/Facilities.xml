@@ -632,6 +632,12 @@
     <technique>Time-of-flight spectroscopy with polarization analysis</technique>
   </instrument>
 
+   <instrument name="DNSE">
+    <technique>Neutron Spectroscopy</technique> 
+    <technique>Reactor Direct Geometry Spectroscopy</technique>
+    <technique>Time-of-flight spectroscopy with polarization analysis</technique>
+  </instrument>
+
   <instrument name="TOFTOF">
     <technique>Neutron Spectroscopy</technique> 
     <technique>Reactor Direct Geometry Spectroscopy</technique>
