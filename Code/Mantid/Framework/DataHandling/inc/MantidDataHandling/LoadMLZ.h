@@ -61,18 +61,18 @@ namespace DataHandling
     void init();
     void exec();
 
-    int getEPPFromVanadium(const std::string &,Mantid::API::MatrixWorkspace_sptr);
+    //int getEPPFromVanadium(const std::string &,Mantid::API::MatrixWorkspace_sptr);
     void loadInstrumentDetails(NeXus::NXEntry&);
+    void loadTimeDetails(NeXus::NXEntry& entry);
     void initWorkSpace(NeXus::NXEntry& entry);
     void initInstrumentSpecific();
     void loadRunDetails(NeXus::NXEntry & entry);
     void loadExperimentDetails(NeXus::NXEntry & entry);
-    int getDetectorElasticPeakPosition(const NeXus::NXInt &data);
-    void loadTimeDetails(NeXus::NXEntry& entry);
+    //int getDetectorElasticPeakPosition(const NeXus::NXInt &data);
+
     NeXus::NXData loadNexusFileData(NeXus::NXEntry& entry);
-    //std::vector<int> loadMaskedDetectors(NeXus::NXEntry& entry);
     void maskDetectors(NeXus::NXEntry& entry);
-    void loadDataIntoTheWorkSpace(NeXus::NXEntry& entry, int vanaCalculatedDetectorElasticPeakPosition = -1);
+    void loadDataIntoTheWorkSpace(NeXus::NXEntry& entry, int ElasticPeakPosition = -1);
 
     void runLoadInstrument();
 
@@ -80,7 +80,7 @@ namespace DataHandling
     static double calculateError(double in) {
         return sqrt(in);
     }
-    int validateVanadium(const std::string &);
+    //int validateVanadium(const std::string &);
 
     API::MatrixWorkspace_sptr m_localWorkspace;
 
@@ -103,8 +103,8 @@ namespace DataHandling
     double m_timeOfFlightDelay;
     int m_monitorCounts;
 
-    double m_l1; //=2.0;
-    double m_l2; //=4.0;
+    double m_l1;
+    double m_l2;
 
     std::vector<std::string> m_supportedInstruments;
     LoadHelper m_mlzloader;

@@ -105,7 +105,7 @@ namespace Mantid
     {
       if (wavelength <= 0)
       {
-        throw std::runtime_error("Wavelenght is <= 0");
+        throw std::runtime_error("Wavelength is <= 0");
       }
 
       double velocity = PhysicalConstants::h / (PhysicalConstants::NeutronMass * wavelength * 1e-10); //m/s
