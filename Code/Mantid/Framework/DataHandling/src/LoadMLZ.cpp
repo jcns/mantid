@@ -100,14 +100,14 @@ namespace DataHandling
           new FileProperty("Filename", "", FileProperty::Load, exts),
           "File path of the Data file to load");
 
-     declareProperty(
+   /*  declareProperty(
           new FileProperty("FilenameVanadium", "", FileProperty::OptionalLoad, exts),
           "File path of the Vanadium file to load (Optional)");
 
      declareProperty(
           new WorkspaceProperty<API::MatrixWorkspace>("WorkspaceVanadium", "",
           Direction::Input, PropertyMode::Optional),
-          "Vanadium Workspace file to load (Optional)");
+          "Vanadium Workspace file to load (Optional)");*/
 
      declareProperty(
           new WorkspaceProperty<>("OutputWorkspace", "", Direction::Output),
@@ -123,15 +123,14 @@ namespace DataHandling
   {
      // Retrieve filename
      std::string filenameData = getPropertyValue("Filename");
-     std::string filenameVanadium = getPropertyValue("FilenameVanadium");
-     MatrixWorkspace_sptr vanaWS = getProperty("WorkspaceVanadium");
+     //std::string filenameVanadium = getPropertyValue("FilenameVanadium");
+     //MatrixWorkspace_sptr vanaWS = getProperty("WorkspaceVanadium");
 
      // open the root node
      NeXus::NXRoot dataRoot(filenameData);
      NXEntry dataFirstEntry = dataRoot.openFirstEntry();
 
      loadInstrumentDetails(dataFirstEntry);
-     //loadMaskedDetectors(dataFirstEntry);
      loadTimeDetails(dataFirstEntry);
      initWorkSpace(dataFirstEntry);
 
@@ -141,6 +140,7 @@ namespace DataHandling
      //int calculatedDetectorElasticPeakPosition = getEPPFromVanadium(filenameVanadium,vanaWS);
      //loadDataIntoTheWorkSpace(dataFirstEntry,calculatedDetectorElasticPeakPosition);
 
+     //Read Elastic Peak Position from Monitor's group - entry "TOF_ChannelOfElasticLine_Guess" of raw data
      loadDataIntoTheWorkSpace(dataFirstEntry,m_monitorElasticPeakPosition);
 
      loadRunDetails(dataFirstEntry);
@@ -176,12 +176,12 @@ namespace DataHandling
   }
 
 
-  /**
+  /*
    * Get the elastic peak position (EPP) from a Vanadium Workspace
    * or filename.
    * Returns the EPP
    */
-   int LoadMLZ::getEPPFromVanadium(const std::string &filenameVanadium, MatrixWorkspace_sptr vanaWS)
+ /*  int LoadMLZ::getEPPFromVanadium(const std::string &filenameVanadium, MatrixWorkspace_sptr vanaWS)
    {
      int calculatedDetectorElasticPeakPosition = -1;
 
@@ -210,33 +210,7 @@ namespace DataHandling
            calculatedDetectorElasticPeakPosition = validateVanadium(filenameVanadium);
      }
      return calculatedDetectorElasticPeakPosition;
-  }
-
-
- /*
-  * Loads Masked detectors from the /Scan/instrument/Detector/pixel_mask
- */
-// std::vector<int> LoadMLZ::loadMaskedDetectors(NeXus::NXEntry& entry) {
-//     // path to the pixel_mask
-//     std::string pmpath = "instrument/Detector/pixel_mask";
-
-//     NeXus::NXInt pmdata = entry.openNXInt(pmpath);
-//     //g_log.debug() << "PMdata size: " << pmdata.size() << std::endl;
-//     // load the counts from the file into memory
-//     pmdata.load();
-//     g_log.debug() << "PMdata size: " << pmdata.size() << std::endl;
-//     std::vector<int> masked_detectors(pmdata(), pmdata()+pmdata.size());
-
-//     g_log.debug() << "Number of masked detectors: " << masked_detectors.size() << std::endl;
-
-//     for (size_t i=0; i<masked_detectors.size(); i++){
-//         g_log.debug() << "List of masked detectors: ";
-//         g_log.debug() << masked_detectors[i];
-//         g_log.debug() << ", ";
-//     }
-//     g_log.debug() << std::endl;
-//     return masked_detectors;
-// }
+  }*/
 
 
   /**
@@ -361,14 +335,10 @@ namespace DataHandling
    */
   void LoadMLZ::initInstrumentSpecific()
   {
+     // Read data from IDF: distance source-sample and distance sample-detectors
      m_l1 = m_mlzloader.getL1(m_localWorkspace);
-     // this will be mainly for IN5 (flat PSD detector)
-     m_l2 = m_mlzloader.getInstrumentProperty(m_localWorkspace,"l2");
-     if (m_l2 == EMPTY_DBL())
-     {
-        g_log.debug("Calculating L2 from the IDF.");
-        m_l2 = m_mlzloader.getL2(m_localWorkspace);
-     }
+     m_l2 = m_mlzloader.getL2(m_localWorkspace);
+
      g_log.debug() << "L1: " << m_l1 << ", L2: " << m_l2 << std::endl;
   }
 
@@ -409,8 +379,8 @@ namespace DataHandling
 
      g_log.debug("Nexus Data:");
      g_log.debug() << " MonitorCounts: " << m_monitorCounts << std::endl;
-     g_log.debug() << " ChannelWidth: " << m_channelWidth << std::endl;
-     g_log.debug() << " Wavelength: " << m_wavelength << std::endl;
+     g_log.debug() << " ChannelWidth (microseconds): " << m_channelWidth << std::endl;
+     g_log.debug() << " Wavelength (angstroems): " << m_wavelength << std::endl;
      g_log.debug() << " ElasticPeakPosition: " << m_monitorElasticPeakPosition << std::endl;
      g_log.debug() << " TimeOfFlightDelay (microseconds): " <<  m_timeOfFlightDelay<< std::endl;
    }
@@ -440,14 +410,11 @@ namespace DataHandling
      end_time = m_mlzloader.dateTimeInIsoFormat(end_time);
      runDetails.addProperty("run_end", end_time);
 
-     //m_wavelength = entry.getFloat("wavelength");
      std::string wavelength = boost::lexical_cast<std::string>(m_wavelength);
-     //runDetails.addProperty<double>("wavelength", m_wavelength);
      runDetails.addProperty("wavelength", wavelength);
+
      double ei = m_mlzloader.calculateEnergy(m_wavelength);
      runDetails.addProperty<double>("Ei", ei, true); //overwrite
-     //std::string ei_str = boost::lexical_cast<std::string>(ei);
-     //runDetails.addProperty("Ei", ei_str);
 
      std::string duration = boost::lexical_cast<std::string>(
                                    entry.getFloat("duration"));
@@ -465,9 +432,9 @@ namespace DataHandling
      runDetails.addProperty("experiment_title", experiment_identifier);
      m_localWorkspace->mutableSample().setName(experiment_identifier);
 
-     //NXSample sample = entry.openNXSample("sample");
+     // Check if temperature is defined
      NXClass sample = entry.openNXGroup("sample");
-     if ( sample.containsDataSet("temperature") )// /Scan/wavelength") m_mlzloader.getStringFromNexusPath(firstEntry, m_instrumentPath + "/name");
+     if ( sample.containsDataSet("temperature") )
      {
      std::string temperature = boost::lexical_cast<std::string>(
      entry.getFloat("sample/temperature"));
@@ -500,7 +467,7 @@ namespace DataHandling
   }
 
 
-  /**
+  /*
    * Gets the experimental Elastic Peak Position in the dectector
    * as the value parsed from the nexus file might be wrong.
    *
@@ -511,67 +478,67 @@ namespace DataHandling
    * @param data :: spectra data
    * @return detector Elastic Peak Position
    */
-  int LoadMLZ::getDetectorElasticPeakPosition(const NeXus::NXInt &data)
-  {
-     // j = index in the equatorial line (256/2=128)
-     // both index 127 and 128 are in the equatorial line
-     size_t j = m_numberOfPixelsPerTube / 2;
+//  int LoadMLZ::getDetectorElasticPeakPosition(const NeXus::NXInt &data)
+//  {
+//     // j = index in the equatorial line (256/2=128)
+//     // both index 127 and 128 are in the equatorial line
+//     //size_t j = m_numberOfPixelsPerTube / 2;
 
-     // ignore the first tubes and the last ones to avoid the beamstop
-     // get limits in the m_numberOfTubes
-     size_t tubesToRemove = m_numberOfTubes / 7;
+//     // ignore the first tubes and the last ones to avoid the beamstop
+//     // get limits in the m_numberOfTubes
+//     size_t tubesToRemove = m_numberOfTubes / 7;
 
-     std::vector<int> cumulatedSumOfSpectras(m_numberOfChannels, 0);
-     for (size_t i = tubesToRemove; i < m_numberOfTubes - tubesToRemove; i++)
-     {
-        int* data_p = &data(static_cast<int>(i), static_cast<int>(j), 0);
-        std::vector<int> thisSpectrum(data_p, data_p + m_numberOfChannels);
-        // sum spectras
-        std::transform(thisSpectrum.begin(), thisSpectrum.end(),
-           cumulatedSumOfSpectras.begin(), cumulatedSumOfSpectras.begin(),
-           std::plus<int>());
-     }
+//     std::vector<int> cumulatedSumOfSpectras(m_numberOfChannels, 0);
+//     for (size_t i = tubesToRemove; i < m_numberOfTubes - tubesToRemove; i++)
+//     {
+//        int* data_p = &data(static_cast<int>(i), static_cast<int>(j), 0);
+//        std::vector<int> thisSpectrum(data_p, data_p + m_numberOfChannels);
+//        // sum spectras
+//        std::transform(thisSpectrum.begin(), thisSpectrum.end(),
+//           cumulatedSumOfSpectras.begin(), cumulatedSumOfSpectras.begin(),
+//           std::plus<int>());
+//     }
 
-     auto it = std::max_element(cumulatedSumOfSpectras.begin(),
-                     cumulatedSumOfSpectras.end());
+//     auto it = std::max_element(cumulatedSumOfSpectras.begin(),
+//                     cumulatedSumOfSpectras.end());
 
-     int calculatedDetectorElasticPeakPosition;
+//     int calculatedDetectorElasticPeakPosition;
 
-     if (it == cumulatedSumOfSpectras.end())
-     {
-        g_log.warning()
-           << "No Elastic peak position found! Assuming the EPP in the Nexus file: "
-           << m_monitorElasticPeakPosition << std::endl;
-        calculatedDetectorElasticPeakPosition = m_monitorElasticPeakPosition;
-      }
-      else
-      {
-        //calculatedDetectorElasticPeakPosition = *it;
-        calculatedDetectorElasticPeakPosition = static_cast<int>(std::distance(
-                  cumulatedSumOfSpectras.begin(), it));
+//     if (it == cumulatedSumOfSpectras.end())
+//     {
+//        g_log.warning()
+//           << "No Elastic peak position found! Assuming the EPP in the Nexus file: "
+//           << m_monitorElasticPeakPosition << std::endl;
+//        calculatedDetectorElasticPeakPosition = m_monitorElasticPeakPosition;
+//      }
+//      else
+//      {
+//         //calculatedDetectorElasticPeakPosition = *it;
+//        calculatedDetectorElasticPeakPosition = static_cast<int>(std::distance(
+//                  cumulatedSumOfSpectras.begin(), it));
 
-        if (calculatedDetectorElasticPeakPosition == 0)
-        {
-           g_log.warning()
-              << "Elastic peak position is ZERO Assuming the EPP in the Nexus file: "
-              << m_monitorElasticPeakPosition << std::endl;
-           calculatedDetectorElasticPeakPosition = m_monitorElasticPeakPosition;
+//        if (calculatedDetectorElasticPeakPosition == 0)
+//        {
+//           g_log.warning()
+//              << "Elastic peak position is ZERO Assuming the EPP in the Nexus file: "
+//              << m_monitorElasticPeakPosition << std::endl;
+//           calculatedDetectorElasticPeakPosition = m_monitorElasticPeakPosition;
 
-        }
-        else
-        {
-           g_log.debug() << "Calculated Detector EPP: "
-                         << calculatedDetectorElasticPeakPosition;
-           g_log.debug() << " :: Read EPP from the nexus file: "
-                         << m_monitorElasticPeakPosition << std::endl;
-        }
-     }
-     return calculatedDetectorElasticPeakPosition;
+//        }
+//        else
+//        {
+//           g_log.debug() << "Calculated Detector EPP: "
+//                         << calculatedDetectorElasticPeakPosition;
+//           g_log.debug() << " :: Read EPP from the nexus file: "
+//                         << m_monitorElasticPeakPosition << std::endl;
+//        }
+//     }
+//     return calculatedDetectorElasticPeakPosition;
 
-  }
+//  }
 
 
-  /**
+  /*
    * Loads the vanadium nexus file and cross checks it against the
    * data file already loaded (same wavelength and same instrument configuration).
    * If matches looks for the elastic peak in the vanadium file and returns
@@ -580,7 +547,7 @@ namespace DataHandling
    * @param filenameVanadium :: The path for the vanadium nexus file.
    * @return The elastic peak position inside the tof channels.
    */
-  int LoadMLZ::validateVanadium(const std::string &filenameVanadium)
+/*  int LoadMLZ::validateVanadium(const std::string &filenameVanadium)
   {
      NeXus::NXRoot vanaRoot(filenameVanadium);
      NXEntry vanaFirstEntry = vanaRoot.openFirstEntry();
@@ -605,15 +572,15 @@ namespace DataHandling
      data.load();
      int calculatedDetectorElasticPeakPosition = getDetectorElasticPeakPosition(data);
      return calculatedDetectorElasticPeakPosition;
-  }
+  }*/
 
   /**
    * Loads all the spectra into the workspace, including that from the monitor
    *
    * @param entry :: The Nexus entry
-   * @param vanaCalculatedDetectorElasticPeakPosition :: If -1 uses this value as the elastic peak position at the detector.
+   * @param ElasticPeakPosition :: If -1 uses this value as the elastic peak position at the detector.
    */
-  void LoadMLZ::loadDataIntoTheWorkSpace(NeXus::NXEntry& entry, int vanaCalculatedDetectorElasticPeakPosition)
+  void LoadMLZ::loadDataIntoTheWorkSpace(NeXus::NXEntry& entry, int ElasticPeakPosition)
   {
      // read in the data
      NXData dataGroup = entry.openNXData("data");
@@ -624,18 +591,18 @@ namespace DataHandling
       * Detector: Find real elastic peak in the detector.
       * Looks for a few elastic peaks on the equatorial line of the detector.
       */
-     int calculatedDetectorElasticPeakPosition;
+    /* int ElasticPeakPosition;
      if (vanaCalculatedDetectorElasticPeakPosition == -1)
-        calculatedDetectorElasticPeakPosition = getDetectorElasticPeakPosition(data);
+        ElasticPeakPosition = getDetectorElasticPeakPosition(data);
      else
-        calculatedDetectorElasticPeakPosition = vanaCalculatedDetectorElasticPeakPosition;
+        ElasticPeakPosition = vanaCalculatedDetectorElasticPeakPosition;*/
 
      //set it as a Property
      API::Run & runDetails = m_localWorkspace->mutableRun();
-     runDetails.addProperty("EPP", calculatedDetectorElasticPeakPosition);
+     runDetails.addProperty("EPP", ElasticPeakPosition);
 
-     double theoreticalElasticTOF = (/*m_mlzloader.calculateTOF(m_l1,m_wavelength)
-                                     +*/ m_mlzloader.calculateTOF(m_l2,m_wavelength))
+     double theoreticalElasticTOF = (m_mlzloader.calculateTOF(m_l1,m_wavelength)
+                                     + m_mlzloader.calculateTOF(m_l2,m_wavelength))
                                     * 1e6; //microsecs
 
      g_log.debug() << "Tof1: " << m_mlzloader.calculateTOF(m_l1,m_wavelength)  << ", Tof2:" << m_mlzloader.calculateTOF(m_l2,m_wavelength) << std::endl;
@@ -647,16 +614,14 @@ namespace DataHandling
            // From Lamp's t2e: m_channelWidth*FLOAT(channel_number - ElasticPeakPosition) + L2/Vi
            detectorTofBins[i] = theoreticalElasticTOF
                                 + m_channelWidth
-                                * static_cast<double>(static_cast<int>(i) - calculatedDetectorElasticPeakPosition)
+                                * static_cast<double>(static_cast<int>(i) - ElasticPeakPosition);
                                 - m_channelWidth / 2; // to make sure the bin is in the middle of the elastic peak
-
         }
-
 
      g_log.information() << "T1+T2 : Theoretical = " << theoreticalElasticTOF;
      g_log.information() << " ::  Calculated bin = ["
-                         << detectorTofBins[calculatedDetectorElasticPeakPosition] << ","
-                         << detectorTofBins[calculatedDetectorElasticPeakPosition + 1] << "]"
+                         << detectorTofBins[ElasticPeakPosition] << ","
+                         << detectorTofBins[ElasticPeakPosition + 1] << "]"
                          << std::endl;
 
      // Assign calculated bins to first X axis
