@@ -104,6 +104,7 @@ namespace DataHandling
 
 
    /* declareProperty(
+
           new FileProperty("FilenameVanadium", "", FileProperty::OptionalLoad, exts),
           "File path of the Vanadium file to load (Optional)");
 
@@ -136,7 +137,6 @@ namespace DataHandling
      NXEntry dataFirstEntry = dataRoot.openFirstEntry();
 
      loadInstrumentDetails(dataFirstEntry);
-     //loadMaskedDetectors(dataFirstEntry);
      loadTimeDetails(dataFirstEntry);
      initWorkSpace(dataFirstEntry);
 
@@ -183,11 +183,13 @@ namespace DataHandling
   }
 
 
-  /**
+  /*
    * Get the elastic peak position (EPP) from a Vanadium Workspace
    * or filename.
    * Returns the EPP
    */
+
+
 
  /*  int LoadMLZ::getEPPFromVanadium(const std::string &filenameVanadium, MatrixWorkspace_sptr vanaWS)
    {
@@ -221,6 +223,7 @@ namespace DataHandling
      }
      return calculatedDetectorElasticPeakPosition;
   }*/
+
 
   /**
    * Loads Masked detectors from the /Scan/instrument/Detector/pixel_mask
@@ -365,6 +368,7 @@ namespace DataHandling
         m_l2 = m_mlzloader.getL2(m_localWorkspace);
      }
 
+
      g_log.debug() << "L1: " << m_l1 << ", L2: " << m_l2 << std::endl;
   }
 
@@ -465,6 +469,8 @@ namespace DataHandling
      NXClass sample = entry.openNXGroup("sample");
      if ( sample.containsDataSet("temperature") )
 
+
+
      {
      std::string temperature = boost::lexical_cast<std::string>(
      entry.getFloat("sample/temperature"));
@@ -497,7 +503,7 @@ namespace DataHandling
   }
 
 
-  /**
+  /*
    * Gets the experimental Elastic Peak Position in the dectector
    * as the value parsed from the nexus file might be wrong.
    *
@@ -508,6 +514,8 @@ namespace DataHandling
    * @param data :: spectra data
    * @return detector Elastic Peak Position
    */
+
+
 
 //  int LoadMLZ::getDetectorElasticPeakPosition(const NeXus::NXInt &data)
 //  {
@@ -529,6 +537,7 @@ namespace DataHandling
 //           cumulatedSumOfSpectras.begin(), cumulatedSumOfSpectras.begin(),
 //           std::plus<int>());
 //     }
+
 
 //     auto it = std::max_element(cumulatedSumOfSpectras.begin(),
 //                     cumulatedSumOfSpectras.end());
@@ -567,6 +576,7 @@ namespace DataHandling
 //     return calculatedDetectorElasticPeakPosition;
 
 //  }
+
 
 
      //set it as a Property
@@ -654,14 +664,17 @@ namespace DataHandling
                                 + m_channelWidth
                                 * static_cast<double>(static_cast<int>(i) - ElasticPeakPosition);
 
+
+
                                 - m_channelWidth / 2; // to make sure the bin is in the middle of the elastic peak
         }
-
 
      g_log.information() << "T1+T2 : Theoretical = " << theoreticalElasticTOF;
      g_log.information() << " ::  Calculated bin = ["
                          << detectorTofBins[ElasticPeakPosition] << ","
                          << detectorTofBins[ElasticPeakPosition + 1] << "]"
+
+
 
                          << std::endl;
 
