@@ -57,7 +57,6 @@ namespace DataHandling
     int confidence(Kernel::NexusDescriptor & descriptor) const;
 
   private:
-    //virtual void initDocs();
     void init();
     void exec();
 
