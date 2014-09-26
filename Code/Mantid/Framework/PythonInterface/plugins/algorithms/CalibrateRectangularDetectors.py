@@ -11,6 +11,7 @@ COMPRESS_TOL_TOF = .01
 
 class CalibrateRectangularDetectors(PythonAlgorithm):
 
+
     def category(self):
         return "Diffraction;PythonAlgorithms"
 
