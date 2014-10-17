@@ -72,7 +72,7 @@ namespace DataHandling
 
     NeXus::NXData loadNexusFileData(NeXus::NXEntry& entry);
     void maskDetectors(NeXus::NXEntry& entry);
-    void loadDataIntoTheWorkSpace(NeXus::NXEntry& entry, int ElasticPeakPosition = -1);
+    void loadDataIntoTheWorkSpace(NeXus::NXEntry& entry);//, int ElasticPeakPosition = -1);
 
     void runLoadInstrument();
 
@@ -102,6 +102,8 @@ namespace DataHandling
     double m_channelWidth;
     double m_timeOfFlightDelay;
     int m_monitorCounts;
+    double m_chopper_speed;
+    int m_chopper_ratio;
 
     double m_l1;
     double m_l2;

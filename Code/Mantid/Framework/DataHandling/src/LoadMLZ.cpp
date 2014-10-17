@@ -24,6 +24,9 @@ TODO: Enter a full wiki-markup description of your algorithm here. You can then 
 #include <vector>
 #include <cmath>
 
+//#include "MantidKernel/ListValidator.h"
+
+
 namespace Mantid
 {
 namespace DataHandling
@@ -54,7 +57,7 @@ namespace DataHandling
   {
      m_instrumentName = "";
      m_wavelength = 0;
-     m_channelWidth = 0;
+     m_channelWidth = 0.0;
      m_numberOfChannels = 0;
      m_numberOfHistograms = 0;
      m_numberOfTubes = 0;
@@ -62,6 +65,8 @@ namespace DataHandling
      m_monitorElasticPeakPosition = 0;
      m_monitorCounts = 0;
      m_timeOfFlightDelay = 0;
+     m_chopper_speed = 0.0;
+     m_chopper_ratio = 0;
      m_l1 = 0;
      m_l2 = 0;
      m_supportedInstruments.push_back("TOFTOF");
@@ -103,6 +108,7 @@ namespace DataHandling
           "File path of the Data file to load");
 
 
+
    /* declareProperty(
 
           new FileProperty("FilenameVanadium", "", FileProperty::OptionalLoad, exts),
@@ -116,6 +122,16 @@ namespace DataHandling
      declareProperty(
           new WorkspaceProperty<>("OutputWorkspace", "", Direction::Output),
           "The name to use for the output workspace");
+
+    /* std::vector<std::string> propOptions;
+     propOptions.push_back("Geometry");
+     propOptions.push_back("Vanadium");
+     propOptions.push_back("Sample");
+     declareProperty("ConvertionEnergyTransfer", "Geometry", boost::make_shared<StringListValidator>(propOptions),
+         "How to calculate the elastic line position?\n"
+         "  Geometry: Use data contained in the header of input file.\n"
+         "  Vanadium: Use a Vanadium file.\n"
+         "  Sample: Use a fit from the neutron counts in the input file.");*/
 
   }
 
@@ -147,7 +163,7 @@ namespace DataHandling
      //loadDataIntoTheWorkSpace(dataFirstEntry,calculatedDetectorElasticPeakPosition);
 
      //Read Elastic Peak Position from Monitor's group - entry "TOF_ChannelOfElasticLine_Guess" of raw data
-     loadDataIntoTheWorkSpace(dataFirstEntry,m_monitorElasticPeakPosition);
+     loadDataIntoTheWorkSpace(dataFirstEntry);//,m_monitorElasticPeakPosition);
 
      loadRunDetails(dataFirstEntry);
      loadExperimentDetails(dataFirstEntry);
@@ -171,7 +187,7 @@ namespace DataHandling
 
      // fields existent only at the MLZ
      if (descriptor.pathExists("/Scan/wavelength")
-       && descriptor.pathExists("/Scan/experiment_title")
+       && descriptor.pathExists("/Scan/title")
        && descriptor.pathExists("/Scan/mode"))
      {
         return 80;
@@ -396,9 +412,9 @@ namespace DataHandling
         }
 
 
-     m_monitorCounts = entry.getInt(monitorName + "/monitor_counts");
+     m_monitorCounts = entry.getInt(monitorName + "/integral");//monitor_counts");
 
-     m_monitorElasticPeakPosition = entry.getInt(monitorName + "/elasticpeak");
+     m_monitorElasticPeakPosition = entry.getInt(monitorName + "/elastic_peak");
 
      NXFloat time_of_flight_data = entry.openNXFloat(monitorName + "/time_of_flight");
      time_of_flight_data.load();
@@ -415,6 +431,16 @@ namespace DataHandling
      g_log.debug() << " Wavelength (angstroems): " << m_wavelength << std::endl;
      g_log.debug() << " ElasticPeakPosition: " << m_monitorElasticPeakPosition << std::endl;
      g_log.debug() << " TimeOfFlightDelay (microseconds): " <<  m_timeOfFlightDelay<< std::endl;
+
+
+     m_chopper_speed = entry.getFloat("instrument/chopper/rotation_speed");
+
+     m_chopper_ratio = entry.getInt("instrument/chopper/ratio");
+
+     g_log.debug() << " ChopperSpeed: " << m_chopper_speed << std::endl;
+     g_log.debug() << " ChopperRatio: " <<  m_chopper_ratio << std::endl;
+
+
    }
 
 
@@ -430,7 +456,7 @@ namespace DataHandling
 
      API::Run & runDetails = m_localWorkspace->mutableRun();
 
-     int runNum = entry.getInt("run_number");
+     int runNum = entry.getInt("entry_identifier");//run_number");
      std::string run_num = boost::lexical_cast<std::string>(runNum);
      runDetails.addProperty("run_number", run_num);
 
@@ -461,7 +487,7 @@ namespace DataHandling
      m_localWorkspace->setTitle(title);
 
      // This should belong to sample ???
-     std::string experiment_identifier = entry.getString("experiment_title");
+     std::string experiment_identifier = entry.getString("experiment_identifier");
      runDetails.addProperty("experiment_title", experiment_identifier);
      m_localWorkspace->mutableSample().setName(experiment_identifier);
 
@@ -480,6 +506,16 @@ namespace DataHandling
      //MonitorCounts
      std::string monitorCounts = boost::lexical_cast<std::string>(m_monitorCounts);
      runDetails.addProperty("monitor_counts", monitorCounts);
+
+     std::string chopper_speed = boost::lexical_cast<std::string>(m_chopper_speed);
+     runDetails.addProperty("chopper_speed", chopper_speed);
+
+     std::string chopper_ratio = boost::lexical_cast<std::string>(m_chopper_ratio);
+     runDetails.addProperty("chopper_ratio", chopper_ratio);
+
+     std::string channel_width = boost::lexical_cast<std::string>(m_channelWidth);
+     runDetails.addProperty("channel_width", channel_width);
+
   }
 
 
@@ -625,7 +661,7 @@ namespace DataHandling
    * @param entry :: The Nexus entry
    * @param ElasticPeakPosition :: If -1 uses this value as the elastic peak position at the detector.
    */
-  void LoadMLZ::loadDataIntoTheWorkSpace(NeXus::NXEntry& entry, int ElasticPeakPosition)
+  void LoadMLZ::loadDataIntoTheWorkSpace(NeXus::NXEntry& entry)//, int ElasticPeakPosition)
   {
      // read in the data
      NXData dataGroup = entry.openNXData("data");
@@ -644,39 +680,33 @@ namespace DataHandling
 
      //set it as a Property
      API::Run & runDetails = m_localWorkspace->mutableRun();
-     runDetails.addProperty("EPP", ElasticPeakPosition);
+     runDetails.addProperty("EPP", m_monitorElasticPeakPosition);// ElasticPeakPosition);
 
-     double theoreticalElasticTOF = (m_mlzloader.calculateTOF(m_l1,m_wavelength)
-                                     + m_mlzloader.calculateTOF(m_l2,m_wavelength))
-                                    * 1e6; //microsecs
-
-
-
+     //double theoreticalElasticTOF = (m_mlzloader.calculateTOF(m_l1,m_wavelength)
+     //                                + m_mlzloader.calculateTOF(m_l2,m_wavelength))
+     //                               * 1e6; //microsecs
 
      g_log.debug() << "Tof1: " << m_mlzloader.calculateTOF(m_l1,m_wavelength)  << ", Tof2:" << m_mlzloader.calculateTOF(m_l2,m_wavelength) << std::endl;
+
 
      // Calculate the real tof (t1+t2) put it in tof array
      std::vector<double> detectorTofBins(m_numberOfChannels + 1);
      for (size_t i = 0; i < m_numberOfChannels + 1; ++i)
         {
            // From Lamp's t2e: m_channelWidth*FLOAT(channel_number - ElasticPeakPosition) + L2/Vi
-           detectorTofBins[i] = theoreticalElasticTOF
+           detectorTofBins[i] = m_channelWidth
+                   * static_cast<double>(static_cast<int>(i) + 1);/*theoreticalElasticTOF
                                 + m_channelWidth
-                                * static_cast<double>(static_cast<int>(i) - ElasticPeakPosition);
 
-
-
-                                - m_channelWidth / 2; // to make sure the bin is in the middle of the elastic peak
+                                * static_cast<double>(static_cast<int>(i) - ElasticPeakPosition);*/
+                               // - m_channelWidth / 2; // to make sure the bin is in the middle of the elastic peak
         }
 
-     g_log.information() << "T1+T2 : Theoretical = " << theoreticalElasticTOF;
-     g_log.information() << " ::  Calculated bin = ["
-                         << detectorTofBins[ElasticPeakPosition] << ","
-                         << detectorTofBins[ElasticPeakPosition + 1] << "]"
-
-
-
-                         << std::endl;
+     //g_log.information() << "T1+T2 : Theoretical = " << theoreticalElasticTOF;
+     //g_log.information() << " ::  Calculated bin = ["
+     //                    << detectorTofBins[ElasticPeakPosition] << ","
+     //                   << detectorTofBins[ElasticPeakPosition + 1] << "]"
+     //                   << std::endl;
 
      // Assign calculated bins to first X axis
      m_localWorkspace->dataX(0).assign(detectorTofBins.begin(), detectorTofBins.end());
