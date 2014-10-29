@@ -625,7 +625,6 @@
 </facility>
 
 <!-- MLZ facility-->
->>>>>>> IDFs for TOFTOF and DNS. Loader for MLZ instruments (working prototype).
 <facility name="MLZ" FileExtensions=".nxs,.hdf,.hdf5">
 
   <instrument name="DNS">

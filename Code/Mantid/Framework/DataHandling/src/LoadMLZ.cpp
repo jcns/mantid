@@ -1,5 +1,4 @@
 /*WIKI*
-
 Loads an MLZ Nexus file into a [[Workspace2D]] with the given name.
 
 This algorithm is under development.
@@ -89,13 +88,12 @@ namespace DataHandling
   /// Algorithm's category for identification. @see Algorithm::category
   const std::string LoadMLZ::category() const { return "DataHandling";}
 
-  //---------------------------------------------------------------------------
 
+  //---------------------------------------------------------------------------
   /** Initialize the algorithm's properties.
    */
   void LoadMLZ::init()
   {
-
      std::vector<std::string> exts;
      exts.push_back(".nxs");
      exts.push_back(".hdf");
@@ -118,10 +116,8 @@ namespace DataHandling
    */
   void LoadMLZ::exec()
   {
-
      // Retrieve filename
      std::string filenameData = getPropertyValue("Filename");
-
 
      // open the root node
      NeXus::NXRoot dataRoot(filenameData);
@@ -156,7 +152,6 @@ namespace DataHandling
   */
   int LoadMLZ::confidence(Kernel::NexusDescriptor & descriptor) const
   {
-
      // fields existent only at the MLZ
      if (descriptor.pathExists("/Scan/wavelength")
        && descriptor.pathExists("/Scan/title")
@@ -170,6 +165,7 @@ namespace DataHandling
      }
   }
 
+
   /**
    * Loads Masked detectors from the /Scan/instrument/Detector/pixel_mask
    */
@@ -179,14 +175,12 @@ namespace DataHandling
      std::string pmpath = "instrument/detector/pixel_mask";
 
      NeXus::NXInt pmdata = entry.openNXInt(pmpath);
-
      // load the counts from the file into memory
      pmdata.load();
      g_log.debug() << "PMdata size: " << pmdata.size() << std::endl;
      std::vector<int> masked_detectors(pmdata(), pmdata()+pmdata.size());
 
      g_log.debug() << "Number of masked detectors: " << masked_detectors.size() << std::endl;
-
 
      for (size_t i=0; i<masked_detectors.size(); i++)
      {
@@ -197,8 +191,6 @@ namespace DataHandling
      g_log.debug() << std::endl;
 
      // Need to get hold of the parameter map
-
-
      Geometry::ParameterMap& pmap = m_localWorkspace->instrumentParameters();
 
      // If explicitly given a list of detectors to mask, just mark those.
@@ -235,17 +227,14 @@ namespace DataHandling
 
      if (m_instrumentPath == "")
      {
-
         throw std::runtime_error("Cannot set the instrument name from the Nexus file!");
      }
 
      m_instrumentName = m_mlzloader.getStringFromNexusPath(firstEntry, m_instrumentPath + "/name");
 
      if (std::find(m_supportedInstruments.begin(), m_supportedInstruments.end(),
-
              m_instrumentName) == m_supportedInstruments.end())
      {
-
           std::string message = "The instrument " + m_instrumentName + " is not valid for this loader!";
           throw std::runtime_error(message);
      }
@@ -253,8 +242,6 @@ namespace DataHandling
      g_log.debug() << "Instrument name set to: " + m_instrumentName << std::endl;
 
    }
-
-
 
 
   /**
@@ -280,7 +267,6 @@ namespace DataHandling
      g_log.debug() << "NumberOfPixelsPerTube: " << m_numberOfPixelsPerTube << std::endl;
      g_log.debug() << "NumberOfChannels: " << m_numberOfChannels << std::endl;
 
-
       // Now create the output workspace
      m_localWorkspace = WorkspaceFactory::Instance().create("Workspace2D",
               m_numberOfHistograms, m_numberOfChannels + 1, m_numberOfChannels);
@@ -296,16 +282,9 @@ namespace DataHandling
    */
   void LoadMLZ::initInstrumentSpecific()
   {
-
+     // Read data from IDF: distance source-sample and distance sample-detectors
      m_l1 = m_mlzloader.getL1(m_localWorkspace);
-     // this will be mainly for IN5 (flat PSD detector)
-     m_l2 = m_mlzloader.getInstrumentProperty(m_localWorkspace,"l2");
-     if (m_l2 == EMPTY_DBL())
-     {
-        g_log.debug("Calculating L2 from the IDF.");
-        m_l2 = m_mlzloader.getL2(m_localWorkspace);
-     }
-
+     m_l2 = m_mlzloader.getL2(m_localWorkspace);
 
      g_log.debug() << "L1: " << m_l1 << ", L2: " << m_l2 << std::endl;
   }
@@ -333,14 +312,12 @@ namespace DataHandling
            throw std::runtime_error(message);
         }
 
-
      m_monitorCounts = entry.getInt(monitorName + "/integral");//monitor_counts");
 
      m_monitorElasticPeakPosition = entry.getInt(monitorName + "/elastic_peak");
 
      NXFloat time_of_flight_data = entry.openNXFloat(monitorName + "/time_of_flight");
      time_of_flight_data.load();
-
 
      // The entry "monitor/time_of_flight", has 3 fields:
      // channel width [microseconds], number of channels, Time of flight delay
@@ -395,7 +372,6 @@ namespace DataHandling
      double ei = m_mlzloader.calculateEnergy(m_wavelength);
      runDetails.addProperty<double>("Ei", ei, true); //overwrite
 
-
      std::string duration = boost::lexical_cast<std::string>(
                                    entry.getFloat("duration"));
      runDetails.addProperty("duration", duration);
@@ -415,9 +391,6 @@ namespace DataHandling
      // Check if temperature is defined
      NXClass sample = entry.openNXGroup("sample");
      if ( sample.containsDataSet("temperature") )
-
-
-
      {
      std::string temperature = boost::lexical_cast<std::string>(
      entry.getFloat("sample/temperature"));
@@ -463,7 +436,6 @@ namespace DataHandling
 
   }
 
-
   /**
    * Loads all the spectra into the workspace, including that from the monitor
    *
@@ -483,7 +455,6 @@ namespace DataHandling
      runDetails.addProperty("EPP", m_monitorElasticPeakPosition);
 
 
-
      // Calculate the real tof (t1+t2) put it in tof array
      std::vector<double> detectorTofBins(m_numberOfChannels + 1);
      for (size_t i = 0; i < m_numberOfChannels + 1; ++i)
@@ -492,7 +463,6 @@ namespace DataHandling
            detectorTofBins[i] = m_channelWidth
                    * static_cast<double>(static_cast<int>(i) + 1);/*theoreticalElasticTOF
                                 + m_channelWidth
-
                                 * static_cast<double>(static_cast<int>(i) - ElasticPeakPosition);*/
                                // - m_channelWidth / 2; // to make sure the bin is in the middle of the elastic peak
         }
@@ -526,7 +496,6 @@ namespace DataHandling
            MantidVec& E = m_localWorkspace->dataE(spec);
            std::transform(data_p, data_p + m_numberOfChannels, E.begin(),LoadMLZ::calculateError);
 
-
            ++spec;
            progress.report();
         }
@@ -558,36 +527,6 @@ namespace DataHandling
       }
    }
 
-           ++spec;
-           progress.report();
-        }
-     }
-  }
-
-
-  /**
-   * Run the Child Algorithm LoadInstrument.
-   */
-  void LoadMLZ::runLoadInstrument()
-  {
-
-     IAlgorithm_sptr loadInst = createChildAlgorithm("LoadInstrument");
-
-     // Now execute the Child Algorithm. Catch and log any error, but don't stop.
-     try
-     {
-        // TODO: depending on the m_numberOfPixelsPerTube we might need to load a different IDF
-
-        loadInst->setPropertyValue("InstrumentName", m_instrumentName);
-        g_log.debug() << "InstrumentName" << m_instrumentName << std::endl;
-        loadInst->setProperty<MatrixWorkspace_sptr>("Workspace", m_localWorkspace);
-        loadInst->execute();
-     }
-     catch (...)
-     {
-        g_log.information("Cannot load the instrument definition.");
-      }
-   }
 
 } // namespace DataHandling
 } // namespace Mantid
