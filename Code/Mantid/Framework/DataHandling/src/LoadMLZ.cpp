@@ -24,8 +24,6 @@ TODO: Enter a full wiki-markup description of your algorithm here. You can then 
 #include <vector>
 #include <cmath>
 
-//#include "MantidKernel/ListValidator.h"
-
 
 namespace Mantid
 {
@@ -107,31 +105,10 @@ namespace DataHandling
           new FileProperty("Filename", "", FileProperty::Load, exts),
           "File path of the Data file to load");
 
-
-
-   /* declareProperty(
-
-          new FileProperty("FilenameVanadium", "", FileProperty::OptionalLoad, exts),
-          "File path of the Vanadium file to load (Optional)");
-
-     declareProperty(
-          new WorkspaceProperty<API::MatrixWorkspace>("WorkspaceVanadium", "",
-          Direction::Input, PropertyMode::Optional),
-          "Vanadium Workspace file to load (Optional)");*/
-
      declareProperty(
           new WorkspaceProperty<>("OutputWorkspace", "", Direction::Output),
           "The name to use for the output workspace");
 
-    /* std::vector<std::string> propOptions;
-     propOptions.push_back("Geometry");
-     propOptions.push_back("Vanadium");
-     propOptions.push_back("Sample");
-     declareProperty("ConvertionEnergyTransfer", "Geometry", boost::make_shared<StringListValidator>(propOptions),
-         "How to calculate the elastic line position?\n"
-         "  Geometry: Use data contained in the header of input file.\n"
-         "  Vanadium: Use a Vanadium file.\n"
-         "  Sample: Use a fit from the neutron counts in the input file.");*/
 
   }
 
@@ -144,8 +121,6 @@ namespace DataHandling
 
      // Retrieve filename
      std::string filenameData = getPropertyValue("Filename");
-     //std::string filenameVanadium = getPropertyValue("FilenameVanadium");
-     //MatrixWorkspace_sptr vanaWS = getProperty("WorkspaceVanadium");
 
 
      // open the root node
@@ -158,9 +133,6 @@ namespace DataHandling
 
      runLoadInstrument(); // just to get IDF contents
      initInstrumentSpecific();
-
-     //int calculatedDetectorElasticPeakPosition = getEPPFromVanadium(filenameVanadium,vanaWS);
-     //loadDataIntoTheWorkSpace(dataFirstEntry,calculatedDetectorElasticPeakPosition);
 
      //Read Elastic Peak Position from Monitor's group - entry "TOF_ChannelOfElasticLine_Guess" of raw data
      loadDataIntoTheWorkSpace(dataFirstEntry);//,m_monitorElasticPeakPosition);
@@ -197,49 +169,6 @@ namespace DataHandling
       return 0;
      }
   }
-
-
-  /*
-   * Get the elastic peak position (EPP) from a Vanadium Workspace
-   * or filename.
-   * Returns the EPP
-   */
-
-
-
- /*  int LoadMLZ::getEPPFromVanadium(const std::string &filenameVanadium, MatrixWorkspace_sptr vanaWS)
-   {
-     int calculatedDetectorElasticPeakPosition = -1;
-
-     if (vanaWS != NULL)
-     {
-       // Check if it has been store on the run object for this workspace
-       if (vanaWS->run().hasProperty("EPP"))
-       {
-           Kernel::Property* prop = vanaWS->run().getProperty("EPP");
-           calculatedDetectorElasticPeakPosition = boost::lexical_cast<int>(prop->value());
-           g_log.information()
-                 << "Using EPP from Vanadium WorkSpace : value =  "
-                 << calculatedDetectorElasticPeakPosition << "\n";
-       }
-       else
-       {
-           g_log.error(
-                 "No EPP Property in the Vanadium Workspace. Following regular procedure...");
-       }
-     }
-     if (calculatedDetectorElasticPeakPosition == -1 && filenameVanadium != "")
-     {
-           g_log.information()
-                << "Calculating the elastic peak position from the Vanadium."
-                << std::endl;
-           calculatedDetectorElasticPeakPosition = validateVanadium(filenameVanadium);
-
-
-     }
-     return calculatedDetectorElasticPeakPosition;
-  }*/
-
 
   /**
    * Loads Masked detectors from the /Scan/instrument/Detector/pixel_mask
@@ -353,13 +282,6 @@ namespace DataHandling
 
 
       // Now create the output workspace
-      // Might need to get this value from the number of monitors in the Nexus file
-      // params:
-      // workspace type,
-      // total number of spectra + (number of monitors = 0),
-      // bin boundaries = m_numberOfChannels + 1
-      // Z/time dimension
-
      m_localWorkspace = WorkspaceFactory::Instance().create("Workspace2D",
               m_numberOfHistograms, m_numberOfChannels + 1, m_numberOfChannels);
      m_localWorkspace->getAxis(0)->unit() = UnitFactory::Instance().create("TOF");
@@ -432,7 +354,6 @@ namespace DataHandling
      g_log.debug() << " ElasticPeakPosition: " << m_monitorElasticPeakPosition << std::endl;
      g_log.debug() << " TimeOfFlightDelay (microseconds): " <<  m_timeOfFlightDelay<< std::endl;
 
-
      m_chopper_speed = entry.getFloat("instrument/chopper/rotation_speed");
 
      m_chopper_ratio = entry.getInt("instrument/chopper/ratio");
@@ -503,7 +424,7 @@ namespace DataHandling
      runDetails.addProperty("temperature", temperature);
      }
 
-     //MonitorCounts
+
      std::string monitorCounts = boost::lexical_cast<std::string>(m_monitorCounts);
      runDetails.addProperty("monitor_counts", monitorCounts);
 
@@ -515,6 +436,10 @@ namespace DataHandling
 
      std::string channel_width = boost::lexical_cast<std::string>(m_channelWidth);
      runDetails.addProperty("channel_width", channel_width);
+
+     //Calculate number of full time channels - use to crop workspace - S. Busch's method
+     double full_channels = floor(30.*m_chopper_ratio/(m_chopper_speed)*1.e6/m_channelWidth);//channelWidth in microsec.
+     runDetails.addProperty("full_channels", full_channels);
 
   }
 
@@ -539,122 +464,6 @@ namespace DataHandling
   }
 
 
-  /*
-   * Gets the experimental Elastic Peak Position in the dectector
-   * as the value parsed from the nexus file might be wrong.
-   *
-   * It gets a few spectra in the equatorial line of the detector,
-   * sum them up and finds the maximum = the Elastic peak
-   *
-   *
-   * @param data :: spectra data
-   * @return detector Elastic Peak Position
-   */
-
-
-
-//  int LoadMLZ::getDetectorElasticPeakPosition(const NeXus::NXInt &data)
-//  {
-//     // j = index in the equatorial line (256/2=128)
-//     // both index 127 and 128 are in the equatorial line
-//     //size_t j = m_numberOfPixelsPerTube / 2;
-
-//     // ignore the first tubes and the last ones to avoid the beamstop
-//     // get limits in the m_numberOfTubes
-//     size_t tubesToRemove = m_numberOfTubes / 7;
-
-//     std::vector<int> cumulatedSumOfSpectras(m_numberOfChannels, 0);
-//     for (size_t i = tubesToRemove; i < m_numberOfTubes - tubesToRemove; i++)
-//     {
-//        int* data_p = &data(static_cast<int>(i), static_cast<int>(j), 0);
-//        std::vector<int> thisSpectrum(data_p, data_p + m_numberOfChannels);
-//        // sum spectras
-//        std::transform(thisSpectrum.begin(), thisSpectrum.end(),
-//           cumulatedSumOfSpectras.begin(), cumulatedSumOfSpectras.begin(),
-//           std::plus<int>());
-//     }
-
-
-//     auto it = std::max_element(cumulatedSumOfSpectras.begin(),
-//                     cumulatedSumOfSpectras.end());
-
-//     int calculatedDetectorElasticPeakPosition;
-
-//     if (it == cumulatedSumOfSpectras.end())
-//     {
-//        g_log.warning()
-//           << "No Elastic peak position found! Assuming the EPP in the Nexus file: "
-//           << m_monitorElasticPeakPosition << std::endl;
-//        calculatedDetectorElasticPeakPosition = m_monitorElasticPeakPosition;
-//      }
-//      else
-//      {
-//         //calculatedDetectorElasticPeakPosition = *it;
-//        calculatedDetectorElasticPeakPosition = static_cast<int>(std::distance(
-//                  cumulatedSumOfSpectras.begin(), it));
-
-//        if (calculatedDetectorElasticPeakPosition == 0)
-//        {
-//           g_log.warning()
-//              << "Elastic peak position is ZERO Assuming the EPP in the Nexus file: "
-//              << m_monitorElasticPeakPosition << std::endl;
-//           calculatedDetectorElasticPeakPosition = m_monitorElasticPeakPosition;
-
-//        }
-//        else
-//        {
-//           g_log.debug() << "Calculated Detector EPP: "
-//                         << calculatedDetectorElasticPeakPosition;
-//           g_log.debug() << " :: Read EPP from the nexus file: "
-//                         << m_monitorElasticPeakPosition << std::endl;
-//        }
-//     }
-//     return calculatedDetectorElasticPeakPosition;
-
-//  }
-
-
-
-     //set it as a Property
-     API::Run & runDetails = m_localWorkspace->mutableRun();
-     runDetails.addProperty("EPP", calculatedDetectorElasticPeakPosition);
-
-  /*
-   * Loads the vanadium nexus file and cross checks it against the
-   * data file already loaded (same wavelength and same instrument configuration).
-   * If matches looks for the elastic peak in the vanadium file and returns
-   * it position.
-   *
-   * @param filenameVanadium :: The path for the vanadium nexus file.
-   * @return The elastic peak position inside the tof channels.
-   */
-/*  int LoadMLZ::validateVanadium(const std::string &filenameVanadium)
-  {
-     NeXus::NXRoot vanaRoot(filenameVanadium);
-     NXEntry vanaFirstEntry = vanaRoot.openFirstEntry();
-
-     double wavelength = vanaFirstEntry.getFloat("wavelength");
-
-     // read in the data
-     NXData dataGroup = vanaFirstEntry.openNXData("data");
-     NXInt data = dataGroup.openIntData();
-
-     size_t numberOfTubes = static_cast<size_t>(data.dim0());
-     size_t numberOfPixelsPerTube = static_cast<size_t>(data.dim1());
-     size_t numberOfChannels = static_cast<size_t>(data.dim2());
-
-     if (wavelength != m_wavelength || numberOfTubes != m_numberOfTubes
-                                    || numberOfPixelsPerTube != m_numberOfPixelsPerTube
-                                    || numberOfChannels != m_numberOfChannels)
-     {
-        throw std::runtime_error("Vanadium and Data were not collected in the same conditions!");
-     }
-
-     data.load();
-     int calculatedDetectorElasticPeakPosition = getDetectorElasticPeakPosition(data);
-     return calculatedDetectorElasticPeakPosition;
-  }*/
-
   /**
    * Loads all the spectra into the workspace, including that from the monitor
    *
@@ -668,25 +477,11 @@ namespace DataHandling
      NXInt data = dataGroup.openIntData();
      // load the counts from the file into memory
      data.load();
-     /*
-      * Detector: Find real elastic peak in the detector.
-      * Looks for a few elastic peaks on the equatorial line of the detector.
-      */
-    /* int ElasticPeakPosition;
-     if (vanaCalculatedDetectorElasticPeakPosition == -1)
-        ElasticPeakPosition = getDetectorElasticPeakPosition(data);
-     else
-        ElasticPeakPosition = vanaCalculatedDetectorElasticPeakPosition;*/
 
      //set it as a Property
      API::Run & runDetails = m_localWorkspace->mutableRun();
-     runDetails.addProperty("EPP", m_monitorElasticPeakPosition);// ElasticPeakPosition);
+     runDetails.addProperty("EPP", m_monitorElasticPeakPosition);
 
-     //double theoreticalElasticTOF = (m_mlzloader.calculateTOF(m_l1,m_wavelength)
-     //                                + m_mlzloader.calculateTOF(m_l2,m_wavelength))
-     //                               * 1e6; //microsecs
-
-     g_log.debug() << "Tof1: " << m_mlzloader.calculateTOF(m_l1,m_wavelength)  << ", Tof2:" << m_mlzloader.calculateTOF(m_l2,m_wavelength) << std::endl;
 
 
      // Calculate the real tof (t1+t2) put it in tof array

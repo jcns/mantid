@@ -8,7 +8,7 @@ import re
 
 # Test for keyword Vanadium or vanadium in Title - compulsory entries
 class CalibrateDetectorSensitivities(PythonAlgorithm):
-    """ Normalize by Vanadium and correct Debye Waller
+    """ Calculate coefficient to normalize by Vanadium and correct Debye Waller
     """
     def category(self):
         """ Return category
@@ -20,7 +20,7 @@ class CalibrateDetectorSensitivities(PythonAlgorithm):
         return "CalibrateDetectorSensitivities"
 
     def summary(self):
-        return "Normalize by Vanadium and correct Debye Waller"
+        return "Calculate coefficient to normalize by Vanadium and correct Debye Waller"
 
     def PyInit(self):
         """ Declare properties
@@ -36,29 +36,28 @@ class CalibrateDetectorSensitivities(PythonAlgorithm):
         self._owksp = self.getProperty("OutputWorkspace").value
 
         run=self._wksp.getRun()
-        #print str(run.getLogData('run_title').value)
 
+        # Check if inputworkspace is from Vanadium data
         if not re.search(r"(?i)(vanadium)", str(run.getLogData('run_title').value)):
             raise ValueError( 'Wrong workspace type for data file')
 
         nb_block=self._wksp.blocksize()
         nb_hist = self._wksp.getNumberHistograms()
-
-        #self._owksp = WorkspaceFactory.create("Workspace2D", NVectors=nb_hist, 
-        #         XLength=nb_block+1, YLength=nb_block)
         self._owksp = self._wksp+0.
 
-        DWF=np.zeros(nb_hist) #input workspace
-        thetasort=np.zeros(nb_hist) #theta in radians
+        # See Sears and Shelley Acta Cryst. A 47, 441 (1991)
+        DWF=np.zeros(nb_hist) #Debye Waller factor corection. One value per spectrum or detector
+        thetasort=np.zeros(nb_hist) #theta in radians !!!NOT 2Theta
         for i in range(nb_hist):
-            det = self._wksp.getInstrument().getDetector(i+1)
+            det = self._wksp.getInstrument().getDetector(i)
             r = np.sqrt((det.getPos().X())**2+\
                         (det.getPos().Y())**2+\
                         (det.getPos().Z())**2)
             thetasort[i]= np.sign(det.getPos().X())*np.arccos(det.getPos().Z()/r)/2.
 
+
         Tempk=float(run.getLogData('temperature').value)
-        wlength = float(run.getLogData('wavelength').value)
+        wlength = float(run.getLogData('wavelength').value) #in angstroem
         Tm=389. # from Sears paper
         MVana=50.942/1000./sp.constants.N_A # Vanadium atomic mass
         if (Tempk < 1.e-3*Tm):
@@ -74,7 +73,6 @@ class CalibrateDetectorSensitivities(PythonAlgorithm):
         array_count_vanadium=np.zeros(nb_block)
         array_error_vanadium=np.zeros(nb_block)
         for i in range(nb_hist):
-            print i
             #crop around max EPP + fit to get fwhm
             array=self._wksp.readY(i)
             arrayx=self._wksp.readX(i)
@@ -88,22 +86,18 @@ class CalibrateDetectorSensitivities(PythonAlgorithm):
                 #Fitting windows
                 startx = tryCentre-10.*sigma
                 endx = tryCentre+10.*sigma
-                ##min(range(len(array)), key=lambda i: abs(array[i]-startx))[1]
-                #min(enumerate(array), key=lambda x: abs(x[1]-startx))[1]
-                #min(enumerate(array), key=lambda x: abs(x[1]-endx))[1]
-                #backgd = 0.5*(min(enumerate(array), key=lambda x: abs(x[1]-startx))[1]+min(enumerate(array), key=lambda x: abs(x[1]-endx))[1])
-                # Function to fit
-                #myFunc = 'name=LinearBackground, A0='+str(backgd)+ ';name=Gaussian, Height='+str(height)+', PeakCentre='+str(tryCentre)+', Sigma='+str(sigma)
                 myFunc = 'name=Gaussian, Height='+str(height)+', PeakCentre='+str(tryCentre)+', Sigma='+str(sigma) 
                 #Run fitting
                 fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(InputWorkspace=self._wksp, \
                 WorkspaceIndex=i, StartX = startx, EndX=endx, Output='fitVanadium', Function=myFunc, MaxIterations=100)
                 #Definition of fwhm to crop vanadium counts and sum
                 fwhm= 2.*np.sqrt(2.*np.log(2.))*paramTable.column(1)[2]
-                idxmin = (np.abs(arrayx-paramTable.column(1)[1]+3.*fwhm)).argmin()
-                idxmax = (np.abs(arrayx-paramTable.column(1)[1]-3.*fwhm)).argmin()
-                array_count_vanadium[:]=DWF[i]*sum(array[i] for i in range(idxmin,idxmax+1))
-                array_error_vanadium[:]=np.sqrt(DWF[i])*sum(arrayerr[i] for i in range(idxmin,idxmax+1))
+                peakCentre = paramTable.column(1)[1]
+                #print fwhm, peakCentre, height
+                idxmin = (np.abs(arrayx-peakCentre+3.*fwhm)).argmin()
+                idxmax = (np.abs(arrayx-peakCentre-3.*fwhm)).argmin()
+                array_count_vanadium[:]=DWF[i]/(float(idxmax)-float(idxmin)+1.)*sum(array[j] for j in range(idxmin,idxmax+1))
+                array_error_vanadium[:]=np.sqrt(DWF[i])*sum(arrayerr[j] for j in range(idxmin,idxmax+1))
             else:
                 array_count_vanadium[:]=0.
                 array_error_vanadium[:]=0.
