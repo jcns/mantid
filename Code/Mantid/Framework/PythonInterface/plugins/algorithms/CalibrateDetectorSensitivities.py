@@ -96,7 +96,7 @@ class CalibrateDetectorSensitivities(PythonAlgorithm):
                 #print fwhm, peakCentre, height
                 idxmin = (np.abs(arrayx-peakCentre+3.*fwhm)).argmin()
                 idxmax = (np.abs(arrayx-peakCentre-3.*fwhm)).argmin()
-                array_count_vanadium[:]=DWF[i]/(float(idxmax)-float(idxmin)+1.)*sum(array[j] for j in range(idxmin,idxmax+1))
+                array_count_vanadium[:]=DWF[i]*sum(array[j] for j in range(idxmin,idxmax+1))
                 array_error_vanadium[:]=np.sqrt(DWF[i])*sum(arrayerr[j] for j in range(idxmin,idxmax+1))
             else:
                 array_count_vanadium[:]=0.
