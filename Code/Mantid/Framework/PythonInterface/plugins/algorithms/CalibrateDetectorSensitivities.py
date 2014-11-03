@@ -54,11 +54,14 @@ class CalibrateDetectorSensitivities(PythonAlgorithm):
                         (det.getPos().Y())**2+\
                         (det.getPos().Z())**2)
             thetasort[i]= np.sign(det.getPos().X())*np.arccos(det.getPos().Z()/r)/2.
-
-
-        Tempk=float(run.getLogData('temperature').value)
+            
+        if not str(run.getLogData('temperature').value):
+            Tempk=293. # in K. assume room temperature if not defined in input file
+            
+        else:
+            Tempk=float(run.getLogData('temperature').value)
         wlength = float(run.getLogData('wavelength').value) #in angstroem
-        Tm=389. # from Sears paper
+        Tm=389. # in K. from Sears paper
         MVana=50.942/1000./sp.constants.N_A # Vanadium atomic mass
         if (Tempk < 1.e-3*Tm):
             integral = 0.5
