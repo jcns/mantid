@@ -354,7 +354,7 @@ namespace DataHandling
 
      API::Run & runDetails = m_localWorkspace->mutableRun();
 
-     int runNum = entry.getInt("entry_identifier");//run_number");
+     std::string runNum = entry.getString("entry_identifier");//run_number");
      std::string run_num = boost::lexical_cast<std::string>(runNum);
      runDetails.addProperty("run_number", run_num);
 
@@ -373,20 +373,20 @@ namespace DataHandling
      runDetails.addProperty<double>("Ei", ei, true); //overwrite
 
      std::string duration = boost::lexical_cast<std::string>(
-                                   entry.getFloat("duration"));
+                                   entry.getInt("duration"));
      runDetails.addProperty("duration", duration);
 
      std::string mode = entry.getString("mode");
      runDetails.addProperty("mode", mode);
 
      std::string title = entry.getString("title");
-     runDetails.addProperty("title", title);
+     //runDetails.addProperty("title", title);
      m_localWorkspace->setTitle(title);
 
      // This should belong to sample ???
-     std::string experiment_identifier = entry.getString("experiment_identifier");
-     runDetails.addProperty("experiment_title", experiment_identifier);
-     m_localWorkspace->mutableSample().setName(experiment_identifier);
+     //std::string experiment_identifier = entry.getString("experiment_identifier");
+     //runDetails.addProperty("experiment_title", experiment_identifier);
+     //m_localWorkspace->mutableSample().setName(experiment_identifier);
 
      // Check if temperature is defined
      NXClass sample = entry.openNXGroup("sample");
@@ -413,6 +413,18 @@ namespace DataHandling
      //Calculate number of full time channels - use to crop workspace - S. Busch's method
      double full_channels = floor(30.*m_chopper_ratio/(m_chopper_speed)*1.e6/m_channelWidth);//channelWidth in microsec.
      runDetails.addProperty("full_channels", full_channels);
+
+     //Proposal title
+     std::string proposal_title = entry.getString("proposal");
+     runDetails.addProperty("proposal_title", proposal_title);
+
+     //proposal number
+     std::string proposal_number = entry.getString("proposal_number");
+     runDetails.addProperty("proposal_number", proposal_number);
+
+     //users
+     std::string user_name = entry.getString("user2/name");
+     runDetails.addProperty("experiment_team", user_name);
 
   }
 
