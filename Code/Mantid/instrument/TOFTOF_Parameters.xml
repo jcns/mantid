@@ -20,6 +20,13 @@
 			<value val="exp(-0.31/sqrt(e))*(1.0-exp(-9.3518/sqrt(e)))" />
 		</parameter>
 
+                <!-- formula for Monitor efficiency calculation. Algorithm: MonitorEfficiencyCorUser  -->
+		<parameter name="formula_mon_eff" type="string">
+			<value val="sqrt(e/25.3)" />
+		</parameter>
+
+
+
 	</component-link>
 
 </parameter-file>

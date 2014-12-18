@@ -125,6 +125,13 @@ namespace DataHandling
 
      loadInstrumentDetails(dataFirstEntry);
      loadTimeDetails(dataFirstEntry);
+
+     //std::vector<std::vector<int> > monitors = getMonitorInfo(dataFirstEntry);
+
+     //initWorkSpace(dataFirstEntry, monitors);
+
+     //addAllNexusFieldsAsProperties(filenameData);
+
      initWorkSpace(dataFirstEntry);
 
      runLoadInstrument(); // just to get IDF contents
@@ -142,8 +149,7 @@ namespace DataHandling
 
      // Set the output workspace property
      setProperty("OutputWorkspace", m_localWorkspace);
-  }                                                 
-
+  }
 
   /**
   * Return the confidence with with this algorithm can load the file
@@ -251,7 +257,7 @@ namespace DataHandling
    * @param entry :: The Nexus entry
    *
    */
-  void LoadMLZ::initWorkSpace(NeXus::NXEntry& entry)
+  void LoadMLZ::initWorkSpace(NeXus::NXEntry& entry) //, const std::vector<std::vector<int> >&monitors)
   {
      // read in the data
      NXData dataGroup = entry.openNXData("data");
@@ -312,7 +318,7 @@ namespace DataHandling
            throw std::runtime_error(message);
         }
 
-     m_monitorCounts = entry.getInt(monitorName + "/integral");//monitor_counts");
+     m_monitorCounts = entry.getInt(monitorName + "/integral");
 
      m_monitorElasticPeakPosition = entry.getInt(monitorName + "/elastic_peak");
 
@@ -359,11 +365,11 @@ namespace DataHandling
      runDetails.addProperty("run_number", run_num);
 
      std::string start_time = entry.getString("start_time");
-     start_time = m_mlzloader.dateTimeInIsoFormat(start_time);
+     //start_time = m_mlzloader.dateTimeInIsoFormat(start_time);
      runDetails.addProperty("run_start", start_time);
 
      std::string end_time = entry.getString("end_time");
-     end_time = m_mlzloader.dateTimeInIsoFormat(end_time);
+     //end_time = m_mlzloader.dateTimeInIsoFormat(end_time);
      runDetails.addProperty("run_end", end_time);
 
      std::string wavelength = boost::lexical_cast<std::string>(m_wavelength);
@@ -473,7 +479,7 @@ namespace DataHandling
         {
            // From Lamp's t2e: m_channelWidth*FLOAT(channel_number - ElasticPeakPosition) + L2/Vi
            detectorTofBins[i] = m_channelWidth
-                   * static_cast<double>(static_cast<int>(i) + 1);/*theoreticalElasticTOF
+                   * static_cast<double>(static_cast<int>(i));/*theoreticalElasticTOF
                                 + m_channelWidth
                                 * static_cast<double>(static_cast<int>(i) - ElasticPeakPosition);*/
                                // - m_channelWidth / 2; // to make sure the bin is in the middle of the elastic peak
