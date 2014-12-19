@@ -148,7 +148,6 @@ set ( SRC_FILES
 	src/ModeratorTzero.cpp
 	src/ModeratorTzeroLinear.cpp
 	src/MonteCarloAbsorption.cpp
-        src/MonitorEfficiencyCorUser.cpp
 	src/MultipleScatteringCylinderAbsorption.cpp
 	src/Multiply.cpp
 	src/MultiplyRange.cpp
@@ -397,7 +396,6 @@ set ( INC_FILES
 	inc/MantidAlgorithms/Minus.h
 	inc/MantidAlgorithms/ModeratorTzero.h
 	inc/MantidAlgorithms/ModeratorTzeroLinear.h
-        inc/MantidAlgorithms/MonitorEfficiencyCorUser.h
 	inc/MantidAlgorithms/MonteCarloAbsorption.h
 	inc/MantidAlgorithms/MultipleScatteringCylinderAbsorption.h
 	inc/MantidAlgorithms/Multiply.h
