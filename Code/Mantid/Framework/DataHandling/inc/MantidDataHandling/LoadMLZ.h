@@ -63,6 +63,10 @@ namespace DataHandling
     //int getEPPFromVanadium(const std::string &,Mantid::API::MatrixWorkspace_sptr);
     void loadInstrumentDetails(NeXus::NXEntry&);
     void loadTimeDetails(NeXus::NXEntry& entry);
+
+    std::vector<std::vector<int> > getMonitorInfo(NeXus::NXEntry& firstEntry);
+
+    //void initWorkSpace(NeXus::NXEntry& entry, const std::vector<std::vector<int> >&);
     void initWorkSpace(NeXus::NXEntry& entry);
     void initInstrumentSpecific();
     void loadRunDetails(NeXus::NXEntry & entry);
