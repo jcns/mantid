@@ -16,6 +16,7 @@ set ( TEST_PY_FILES
   CylinderPaalmanPingsCorrectionTest.py
   DakotaChiSquaredTest.py
   DensityOfStatesTest.py
+  DNSNormalizeTest.py
   DSFinterpTest.py
   FilterLogByTimeTest.py
   FindReflectometryLinesTest.py
