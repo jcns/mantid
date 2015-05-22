@@ -19,7 +19,7 @@ class DNSNormalizeTest(unittest.TestCase):
     def test_NormalizeToDuration(self):
         outputWorkspaceName = "DNSNormalizeTest_NormalizedToDuration"
         alg_test = run_algorithm("DNSNormalize", InputWorkspace=self.test_ws,
-                OutputWorkspace=outputWorkspaceName, NormalizeTo='duration')
+                OutputWorkspace=outputWorkspaceName, NormalizeBy='duration')
 
         self.assertTrue(alg_test.isExecuted())
 
@@ -46,7 +46,7 @@ class DNSNormalizeTest(unittest.TestCase):
     def test_NormalizeToMonitor(self):
         outputWorkspaceName = "DNSNormalizeTest_NormalizedToMonitor"
         alg_test = run_algorithm("DNSNormalize", InputWorkspace=self.test_ws,
-                OutputWorkspace=outputWorkspaceName, NormalizeTo='mon_sum')
+                OutputWorkspace=outputWorkspaceName, NormalizeBy='mon_sum')
 
         self.assertTrue(alg_test.isExecuted())
 
@@ -74,7 +74,7 @@ class DNSNormalizeTest(unittest.TestCase):
         outputWorkspaceName = "DNSNormalizeTest_TestValidation"
         self.assertRaises(ValueError, api.DNSNormalize, InputWorkspace=self.test_ws,
                           OutputWorkspace=outputWorkspaceName,
-                          NormalizeTo='qqq')
+                          NormalizeBy='qqq')
 
     def tearDown(self):
         run_algorithm("DeleteWorkspace", Workspace=self.test_ws)

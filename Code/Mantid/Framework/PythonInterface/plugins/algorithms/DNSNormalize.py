@@ -7,7 +7,7 @@ NORMALIZATIONS = ['duration', 'mon_sum']
 
 class DNSNormalize(PythonAlgorithm):
     """
-    Normalizes the given matrix workspace to the given log value.
+    Normalizes the given matrix workspace by the given log value.
     Normalization either to monitor or to duration is supported for the moment.
     This algorithm is written for the DNS @ MLZ,
     but can be used for other instruments if needed.
@@ -25,8 +25,8 @@ class DNSNormalize(PythonAlgorithm):
         return "DNSNormalize"
 
     def summary(self):
-        return "Normalizes the given matrix workspace to the given log value. \
-                Normalization either to monitor or to duration is supported \
+        return "Normalizes the given matrix workspace by the given log value. \
+                Normalization either by monitor or by duration is supported \
                 for the moment. This algorithm is developed for DNS @ MLZ, \
                 but can be used for other instruments if needed."
 
@@ -37,9 +37,9 @@ class DNSNormalize(PythonAlgorithm):
         self.declareProperty(WorkspaceProperty("OutputWorkspace",
                 "", direction=Direction.Output),
                 doc="A workspace to save the normalized data.")
-        self.declareProperty(name="NormalizeTo", defaultValue='duration',
+        self.declareProperty(name="NormalizeBy", defaultValue='duration',
                 validator=StringListValidator(NORMALIZATIONS),
-                doc="Type of normalization for Vanadium and Background. \
+                doc="Name of the log value to normalize by. \
                 Valid values: %s" % str(NORMALIZATIONS))
         return
 
@@ -47,7 +47,7 @@ class DNSNormalize(PythonAlgorithm):
         # Input
         dataws = mtd[self.getPropertyValue("InputWorkspace")]
         # outws = self.getPropertyValue("OutputWorkspace")
-        norm = self.getPropertyValue("NormalizeTo")
+        norm = self.getPropertyValue("NormalizeBy")
         run = dataws.getRun()
         try:
             nvalue = run.getProperty(norm).value
@@ -57,7 +57,7 @@ class DNSNormalize(PythonAlgorithm):
             __scaled_data__ = api.Scale(dataws, 1.0/nvalue, "Multiply")
 
             self.setProperty("OutputWorkspace", __scaled_data__)
-            self.log().debug('DNS data have been normalized to %s=%d.' % (norm, nvalue))
+            self.log().debug('DNS data have been normalized by %s=%d.' % (norm, nvalue))
             api.DeleteWorkspace(__scaled_data__)
 
         return
