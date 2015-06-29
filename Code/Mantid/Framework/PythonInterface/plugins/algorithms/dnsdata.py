@@ -136,7 +136,7 @@ class DNSdata(object):
                 0.001*float(b3splitted[11].split()[2])
             self.slit_i_right_blade_position = \
                 0.001*float(b3splitted[12].split()[1])
-            # Slit_f
+            # Slit_f, does not exist in the recent configuration
             self.slit_f_upper_blade_position = \
                 0.001*float(b3splitted[14].split()[1])
             self.slit_f_lower_blade_position = \

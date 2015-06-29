@@ -120,6 +120,15 @@ class LoadDNSLegacy(PythonAlgorithm):
         # type of polarisation
         api.AddSampleLog(__temporary_workspace__, 'polarisation',
                          LogText=pol, LogType='String')
+        # slits
+        api.AddSampleLog(__temporary_workspace__, 'slit_i_upper_blade_position',
+                         LogText=str(metadata.slit_i_upper_blade_position), LogType='String')
+        api.AddSampleLog(__temporary_workspace__, 'slit_i_lower_blade_position',
+                         LogText=str(metadata.slit_i_lower_blade_position), LogType='String')
+        api.AddSampleLog(__temporary_workspace__, 'slit_i_left_blade_position',
+                         LogText=str(metadata.slit_i_left_blade_position), LogType='String')
+        api.AddSampleLog(__temporary_workspace__, 'slit_i_right_blade_position',
+                         LogText=str(metadata.slit_i_right_blade_position), LogType='String')
 
         self.setProperty("OutputWorkspace", __temporary_workspace__)
         self.log().debug('LoadDNSLegacy: data are loaded to the workspace ' + outws)
