@@ -1,4 +1,3 @@
-from mantid.kernel import *
 import mantid.simpleapi as api
 import unittest
 from testhelpers import run_algorithm
@@ -12,14 +11,14 @@ class DNSNormalizeTest(unittest.TestCase):
         dataWorkspaceName = "DNSNormalizeTest_Data"
         filename = "dn134011vana.d_dat"
         alg = run_algorithm("LoadDNSLegacy", Filename=filename,
-                OutputWorkspace=dataWorkspaceName, Polarisation='y')
+                            OutputWorkspace=dataWorkspaceName, Polarisation='y')
 
         self.test_ws = alg.getPropertyValue("OutputWorkspace")
 
     def test_NormalizeToDuration(self):
         outputWorkspaceName = "DNSNormalizeTest_NormalizedToDuration"
         alg_test = run_algorithm("DNSNormalize", InputWorkspace=self.test_ws,
-                OutputWorkspace=outputWorkspaceName, NormalizeBy='duration')
+                                 OutputWorkspace=outputWorkspaceName, NormalizeBy='duration')
 
         self.assertTrue(alg_test.isExecuted())
 
@@ -46,7 +45,7 @@ class DNSNormalizeTest(unittest.TestCase):
     def test_NormalizeToMonitor(self):
         outputWorkspaceName = "DNSNormalizeTest_NormalizedToMonitor"
         alg_test = run_algorithm("DNSNormalize", InputWorkspace=self.test_ws,
-                OutputWorkspace=outputWorkspaceName, NormalizeBy='mon_sum')
+                                 OutputWorkspace=outputWorkspaceName, NormalizeBy='mon_sum')
 
         self.assertTrue(alg_test.isExecuted())
 

@@ -1,6 +1,7 @@
-from mantid.kernel import *
-from mantid.api import *
 import mantid.simpleapi as api
+from mantid.api import PythonAlgorithm, AlgorithmFactory, WorkspaceProperty, mtd
+from mantid.kernel import Direction, StringListValidator
+
 
 NORMALIZATIONS = ['duration', 'mon_sum']
 
@@ -32,15 +33,15 @@ class DNSNormalize(PythonAlgorithm):
 
     def PyInit(self):
         self.declareProperty(WorkspaceProperty("InputWorkspace",
-                "", direction=Direction.Input),
-                doc="A workspace with raw experimental data.")
+                                               "", direction=Direction.Input),
+                             doc="A workspace with raw experimental data.")
         self.declareProperty(WorkspaceProperty("OutputWorkspace",
-                "", direction=Direction.Output),
-                doc="A workspace to save the normalized data.")
+                                               "", direction=Direction.Output),
+                             doc="A workspace to save the normalized data.")
         self.declareProperty(name="NormalizeBy", defaultValue='duration',
-                validator=StringListValidator(NORMALIZATIONS),
-                doc="Name of the log value to normalize by. \
-                Valid values: %s" % str(NORMALIZATIONS))
+                             validator=StringListValidator(NORMALIZATIONS),
+                             doc="Name of the log value to normalize by. \
+                             Valid values: %s" % str(NORMALIZATIONS))
         return
 
     def PyExec(self):
