@@ -17,6 +17,7 @@ set ( TEST_PY_FILES
   DakotaChiSquaredTest.py
   DensityOfStatesTest.py
   DNSNormalizeTest.py
+  DNSSubtractBackgroundTest.py
   DSFinterpTest.py
   FilterLogByTimeTest.py
   FindReflectometryLinesTest.py

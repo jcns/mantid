@@ -19,9 +19,9 @@ class LoadDNSLegacy(PythonAlgorithm):
     """
     def category(self):
         """
-        Returns categore
+        Returns category
         """
-        return 'DataHandling'
+        return 'PythonAlgorithms\\MLZ\\DNS\\DataHandling'
 
     def name(self):
         """
