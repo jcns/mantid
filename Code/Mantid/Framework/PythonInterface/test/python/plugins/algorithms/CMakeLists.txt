@@ -6,6 +6,7 @@ set ( TEST_PY_FILES
   AddSampleLogMultipleTest.py
   ApplyPaalmanPingsCorrectionTest.py
   CalculateSampleTransmissionTest.py
+  CalibrateDetectorSensitivitiesTest.py
   CheckForSampleLogsTest.py
   ConjoinSpectraTest.py
   CorrectLogTimesTest.py
@@ -35,6 +36,7 @@ set ( TEST_PY_FILES
   ILLIN16BCalibrationTest.py
   ISISIndirectEnergyTransferTest.py
   LoadDNSLegacyTest.py
+  LoadTOFTOFRawTest.py
   LoadFullprofFileTest.py
   LoadLiveDataTest.py
   LoadLogPropertyTableTest.py
@@ -63,6 +65,10 @@ set ( TEST_PY_FILES
   SymmetriseTest.py
   UpdatePeakParameterTableValueTest.py
   SANSSubtractTest.py
+  TOFTOFCleanSampleLogsTest.py
+  TOFTOFCleanTimeFrameTest.py
+  TOFTOFConvertTofToDeltaETest.py
+  TOFTOFSaveAsciiTest.py
   TimeSliceTest.py
   TransformToIqtTest.py
   ExportSampleLogsToCSVFileTest.py
