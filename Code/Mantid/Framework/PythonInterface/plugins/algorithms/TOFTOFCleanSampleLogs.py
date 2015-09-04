@@ -75,7 +75,18 @@ class TOFTOFCleanSampleLogs(PythonAlgorithm):
             FinalListComparedLogs = self.getFinalComparedEntries(list_SampleLogs)
 
             # Values in Sample Logs to be averaged: temperature
-            avgtemp = 1./len(wsNames)*sum([float(list_SampleLogs[k]['temperature']) for k in range(len(wsNames))])
+            temperatures = []
+            for k in range(len(wsNames)):
+                if list_SampleLogs[k].has_key('temperature'):
+                    temperatures.append(float(list_SampleLogs[k]['temperature']))
+                else:
+                    self.log().warning("Temperature sample log is not present in the workspace " + wsNames[k])
+            if len(temperatures):
+                avgtemp  = sum(temperatures)/len(temperatures)
+            else:
+                avgtemp = "Not given"
+
+            # avgtemp = 1./len(wsNames)*sum([float(list_SampleLogs[k]['temperature']) for k in range(len(wsNames))])
             # Values in Sample Logs - Min and Max
             tot_duration = max([float(list_SampleLogs[k]['duration']) for k in range(len(wsNames))])
             min_rstart = min([list_SampleLogs[k]['run_start'] for k in range(len(wsNames))])
