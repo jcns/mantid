@@ -42,8 +42,8 @@ class CalibrateDetectorSensitivities(PythonAlgorithm):
         self._wksp = self.getProperty("InputWorkspace").value
 
         # Check if inputworkspace is from Vanadium data
-        if not re.search(r"(?i)(vanadium)", str(self._wksp.getRun().getLogData('run_title').value)):
-            raise ValueError('Wrong workspace type for data file')
+        # if not re.search(r"(?i)(vanadium)", str(self._wksp.getRun().getLogData('run_title').value)):
+        #    raise ValueError('Wrong workspace type for data file')
 
         wsOutput = self._FillOutputWorkspace(self._wksp)
         self.setProperty("OutputWorkspace", wsOutput)
