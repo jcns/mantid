@@ -183,13 +183,41 @@ public:
                                  const std::vector<double> &tzero) = 0;
 
   /**
-   * Enable/disable calibrate actions. The idea is that actions /
-   * buttons like 'calibrate' or 'load calibration' can be disabled
-   * while a calibration is being calculated.
+   * Enable/disable calibrate+focus actions. The idea is that actions
+   * / buttons like 'calibrate', 'load calibration', or 'focus' can be
+   * disabled while a calibration of a focusing is being calculated.
    *
    * @param enable true to enable actions (default initial state)
    */
-  virtual void enableCalibrateActions(bool enable) = 0;
+  virtual void enableCalibrateAndFocusActions(bool enable) = 0;
+
+  /**
+   * Directory set for focusing outputs
+   *
+   * @return directory path as a string
+   */
+  virtual std::string focusingDir() const = 0;
+
+  /**
+   * A (sample) run to focus
+   *
+   * @return run number, as a string
+   */
+  virtual std::string focusingRunNo() const = 0;
+
+  /**
+   * Bank to consider when focusing
+   *
+   * @return instrument bank number
+   */
+  virtual int focusingBank() const = 0;
+
+  /**
+   * Check box to consider when focusing
+   * whether to plot focused workspace
+   * @return bool
+   */
+  virtual bool focusedOutWorkspace() const = 0;
 
   /**
    * Save settings (normally when closing the interface). This
@@ -197,6 +225,12 @@ public:
    * geometry, preferences etc. of the user interface.
    */
   virtual void saveSettings() const = 0;
+
+  /**
+  * Runs plotSpectrum function via python
+  * @returns single spectrum graph for focused output
+  */
+  virtual void plotFocusedSpectrum() = 0;
 };
 
 } // namespace CustomInterfaces
