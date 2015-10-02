@@ -75,9 +75,9 @@ set ( TEST_PY_FILES
   SymmetriseTest.py
   UpdatePeakParameterTableValueTest.py
   SANSSubtractTest.py
-  TOFTOFCleanSampleLogsTest.py
   TOFTOFCleanTimeFrameTest.py
   TOFTOFConvertTofToDeltaETest.py
+  TOFTOFMergeRunsTest.py
   TOFTOFSaveAsciiTest.py
   TimeSliceTest.py
   TOSCABankCorrectionTest.py
