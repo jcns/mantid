@@ -254,6 +254,7 @@ set ( SRC_FILES
 	src/Scale.cpp
 	src/ScaleX.cpp
 	src/Segfault.cpp
+	src/SetHistBug.cpp
 	src/SetInstrumentParameter.cpp
 	src/SetUncertainties.cpp
 	src/ShiftLogTime.cpp
@@ -575,6 +576,7 @@ set ( INC_FILES
 	inc/MantidAlgorithms/Scale.h
 	inc/MantidAlgorithms/ScaleX.h
 	inc/MantidAlgorithms/Segfault.h
+	inc/MantidAlgorithms/SetHistBug.h
 	inc/MantidAlgorithms/SetInstrumentParameter.h
 	inc/MantidAlgorithms/SetUncertainties.h
 	inc/MantidAlgorithms/ShiftLogTime.h
@@ -882,6 +884,7 @@ set ( TEST_FILES
 	SassenaFFTTest.h
 	ScaleTest.h
 	ScaleXTest.h
+	SetHistBugTest.h
 	SetInstrumentParameterTest.h
 	SetUncertaintiesTest.h
 	ShiftLogTimeTest.h
