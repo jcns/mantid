@@ -884,7 +884,7 @@ set ( TEST_FILES
 	SassenaFFTTest.h
 	ScaleTest.h
 	ScaleXTest.h
-	SetHistBugTest.h
+	# SetHistBugTest.h
 	SetInstrumentParameterTest.h
 	SetUncertaintiesTest.h
 	ShiftLogTimeTest.h
