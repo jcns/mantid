@@ -121,7 +121,7 @@ class DNSScriptElement(BaseScriptElement):
 
         for (runs, ws, cmnt) in self.dataRuns:
             put('data_runs',             runs)
-            put('data_output_worksoace', ws)
+            put('data_output_workspace', ws)
             put('data_comment',          cmnt)
 
         for(min, max) in self.maskAngles:
@@ -198,7 +198,7 @@ class DNSScriptElement(BaseScriptElement):
             self.fileSuffix     = get_str('file_suffix')
 
             dataRuns  = get_strlst('data_runs')
-            dataOutWs = get_strlst('data_output_worksoace')
+            dataOutWs = get_strlst('data_output_workspace')
             dataCmts  = get_strlst('data_comment')
 
             for i in range(min(len(dataRuns), len(dataOutWs), len(dataCmts))):
