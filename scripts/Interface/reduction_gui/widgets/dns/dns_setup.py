@@ -7,7 +7,7 @@ from reduction_gui.reduction.dns.dns_reduction import DNSScriptElement
 
 
 class DNSSetupWidget(BaseWidget):
-    
+
     name = 'DNS Reduction'
 
     class DataTable(QAbstractTableModel):
@@ -108,7 +108,7 @@ class DNSSetupWidget(BaseWidget):
             return len(self.tableData)
 
         def _getRow(self, row):
-              return self.tableData[row] if row < self._getRowNumbers() else ('', '')
+            return self.tableData[row] if row < self._getRowNumbers() else ('', '')
 
         def _isRowEmpty(self, row):
             (minAngle, maxAngle) = self._getRow(row)
@@ -186,6 +186,7 @@ class DNSSetupWidget(BaseWidget):
         def flags(self, _):
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
 
+
     TIP_sampleDataPath    = ''
     TIP_btnSampleDataPath = ''
     TIP_sampleFilePre     = ''
@@ -203,17 +204,16 @@ class DNSSetupWidget(BaseWidget):
     TIP_standardDataPath    = ''
     TIP_btnStandardDataPath = ''
 
-    TIP_chkDetEffi           = ''
-    TIP_chkSumVan            = ''
-    TIP_chkSubInst           = ''
-    TIP_subFac            = ''
-    TIP_chkFlippRatio        = ''
-    TIP_flippFac          = ''
-    TIP_multiSF              = ''
-    TIP_rbnNormaliseTime = ''
-    TIP_rbnNormaliseMonitor  = ''
-    TIP_neutronWaveLen       = ''
-    TIP_chkKeepIntermadiate  = ''
+    TIP_chkDetEffi          = ''
+    TIP_chkSumVan           = ''
+    TIP_chkSubInst          = ''
+    TIP_subFac              = ''
+    TIP_chkFlippRatio       = ''
+    TIP_flippFac            = ''
+    TIP_multiSF             = ''
+    TIP_rbnNormaliseTime    = ''
+    TIP_rbnNormaliseMonitor = ''
+    TIP_neutronWaveLen      = ''
 
     TIP_rbnPolyAmor    = ''
     TIP_rbnSingleCryst = ''
@@ -238,8 +238,7 @@ class DNSSetupWidget(BaseWidget):
     TIP_scatterV3      = ''
 
     def __init__(self, settings):
-
-        BaseWidget.__init__(self, settings = settings)
+        BaseWidget.__init__(self, settings=settings)
         inf = float('inf')
 
         def tip(widget, text):
@@ -263,15 +262,14 @@ class DNSSetupWidget(BaseWidget):
         self.sampleFileSuff    = tip(QLineEdit(),           self.TIP_sampleFileSuff)
 
         self.runsView = tip(QTableView(self), self.TIP_runsView)
-        self.runsView.horizontalHeader().setResizeMode(QHeaderView.ResizeToContents)
-        self.runsView.horizontalHeader().setStretchLastSection(True)
+        self.runsView.horizontalHeader().setResizeMode(QHeaderView.Stretch)
         self.runsView.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         self.runNumbersModel = DNSSetupWidget.DataTable(self)
         self.runsView.setModel(self.runNumbersModel)
 
         self.maskAngleView = tip(QTableView(self), self.TIP_maskAngle)
-        self.maskAngleView.horizontalHeader().setStretchLastSection(True)
+        self.maskAngleView.horizontalHeader().setResizeMode(QHeaderView.Stretch)
         self.maskAngleView.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         self.maskAngleModel = DNSSetupWidget.MaskDetTable(self)
@@ -292,10 +290,9 @@ class DNSSetupWidget(BaseWidget):
         self.chkFlippRatio       = tip(QCheckBox('Flipping ratio correction'),                 self.TIP_chkFlippRatio)
         self.flippFac            = tip(QDoubleSpinBox(),                                       self.TIP_flippFac)
         self.multiSF             = tip(QDoubleSpinBox(),                                       self.TIP_multiSF)
-        self.rbnNormaliseTime    = tip(QRadioButton('time       '),                                   self.TIP_rbnNormaliseTime)
+        self.rbnNormaliseTime    = tip(QRadioButton('time'),                                   self.TIP_rbnNormaliseTime)
         self.rbnNormaliseMonitor = tip(QRadioButton('monitor'),                                self.TIP_rbnNormaliseMonitor)
         self.neutronWaveLength   = tip(QDoubleSpinBox(),                                       self.TIP_neutronWaveLen)
-        self.chkKeepIntermediate = tip(QCheckBox('Keep intermediate workspaces'),              self.TIP_chkKeepIntermadiate)
         set_spin(self.subFac,            0.0)
         set_spin(self.flippFac,          0.0)
         set_spin(self.multiSF,           0.0, 1.0)
@@ -344,6 +341,10 @@ class DNSSetupWidget(BaseWidget):
                     box.addLayout(wgt)
                 elif isinstance(wgt, QWidget):
                     box.addWidget(wgt)
+                elif isinstance(wgt, QSpacerItem):
+                    box.addSpacerItem(wgt)
+                else:
+                    box.addStretch(wgt)
             return box
 
         def hbox(widgets):
@@ -352,11 +353,11 @@ class DNSSetupWidget(BaseWidget):
         def vbox(widgets):
             return _box(QVBoxLayout, widgets)
 
-        def lable(text, tip):
-            lable = QLabel(text)
+        def label(text, tip):
+            label = QLabel(text)
             if tip:
-                lable.setToolTip(tip)
-            return lable
+                label.setToolTip(tip)
+            return label
 
         def _frameBox(frame, box) :
             frame.setFrameShape(QFrame.Box)
@@ -372,7 +373,7 @@ class DNSSetupWidget(BaseWidget):
         box = QHBoxLayout()
         self._layout.addLayout(box)
 
-        sampleBox = vbox((gbSampleData,self.runsView))
+        sampleBox = vbox((gbSampleData, self.runsView))
         frameSampleBox = QFrame()
         _frameBox(frameSampleBox, sampleBox)
 
@@ -380,9 +381,9 @@ class DNSSetupWidget(BaseWidget):
         frameMaskDetectorBox = QFrame()
         _frameBox(frameMaskDetectorBox, maskDetectorBox)
 
-        OutBox = vbox((self.chkSaveToFile, gbOut))
+        outBox = vbox((self.chkSaveToFile, gbOut))
         frameOutBox = QFrame()
-        _frameBox(frameOutBox, OutBox)
+        _frameBox(frameOutBox, outBox)
 
         stdBox = vbox((gbStdData, ))
         frameStdData = QFrame()
@@ -396,25 +397,25 @@ class DNSSetupWidget(BaseWidget):
         frameOutputBox = QFrame()
         _frameBox(frameOutputBox, OutputBox)
 
-        spacer = QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
-
-        box.addLayout(vbox((frameSampleBox, frameMaskDetectorBox, frameOutBox)))
+        box.addLayout(vbox((frameSampleBox,frameMaskDetectorBox, frameOutBox)))
         box.addLayout(vbox((frameStdData, frameDataRedBox, frameOutputBox)))
 
         grid = QGridLayout()
-        hboxMultiSP = hbox((QLabel('Data path'), self.sampleDataPath, self.btnSampleDataPath))
-        grid.addLayout(hboxMultiSP,                  0, 0, 1, 4)
+        hboxSampleData = hbox((QLabel('Data path'), self.sampleDataPath, self.btnSampleDataPath))
+        grid.addLayout(hboxSampleData,         0, 0, 1, 4)
         grid.addWidget(QLabel('File prefix'),  1, 0)
         grid.addWidget(self.sampleFilePre,     1, 1)
         grid.addWidget(QLabel('suffix'),       1, 2)
         grid.addWidget(self.sampleFileSuff,    1, 3)
-
         gbSampleData.setLayout(grid)
 
         grid = QGridLayout()
         grid.addWidget(self.maskAngleView, 0, 0)
-
         gbMaskDet.setLayout(grid)
+
+        self.SaveLines = []
+        self.SaveLines.append(self.outDir)
+        self.SaveLines.append(self.outFile)
 
         grid = QGridLayout()
         grid.addWidget(QLabel("       Output directory"),   1, 0)
@@ -422,12 +423,6 @@ class DNSSetupWidget(BaseWidget):
         grid.addWidget(self.btnOutDir,                      1, 2)
         grid.addWidget(QLabel('       Output file prefix'), 2, 0)
         grid.addWidget(self.outFile,                        2, 1)
-        #grid.setContentsMargins(50, 50, 50, 50)
-
-        self.SaveLines = []
-        self.SaveLines.append(self.outDir)
-        self.SaveLines.append(self.outFile)
-
         gbOut.setLayout(grid)
         gbOut.setContentsMargins(0, 0, 0, 0)
 
@@ -435,37 +430,40 @@ class DNSSetupWidget(BaseWidget):
         grid.addWidget(QLabel('Path'),              1, 1)
         grid.addWidget(self.standardDataPath,       1, 2)
         grid.addWidget(self.btnStandardDataPath,    1, 3)
-
         gbStdData.setLayout(grid)
 
         bntGroup = QButtonGroup(self)
         bntGroup.addButton(self.rbnNormaliseMonitor)
         bntGroup.addButton(self.rbnNormaliseTime)
 
-        hboxSumVan     = hbox((QLabel('      '), self.chksumVan))
-        hboxSubInst    = hbox((QLabel('      '), QLabel('Factor'), self.subFac))
-        hboxFlipp      = hbox((QLabel('      '), QLabel('Factor'), self.flippFac))
-        hboxMultiSP    = hbox((QLabel('Multiple SF scattering probability'), self.multiSF))
-        hboxNormalise  = hbox((QLabel('Normalization'), self.rbnNormaliseTime, self.rbnNormaliseMonitor))
-        hboxWaveLength = hbox((QLabel('Neutron wavelength (\305)'), self.neutronWaveLength))
-        hboxSumVan.addSpacerItem(spacer)
-        hboxSubInst.addSpacerItem(spacer)
-        hboxFlipp.addSpacerItem(spacer)
-        hboxWaveLength.addSpacerItem(spacer)
-        hboxMultiSP.addSpacerItem(spacer)
-        hboxNormalise.addSpacerItem(spacer)
+        spacerFac1 = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Minimum)
+        spacerFac2 = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Minimum)
+
+        hboxSumVan     = hbox((QLabel('      '), self.chksumVan,
+                               QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+        hboxSubInst    = hbox((QLabel('      '), QLabel('Factor'), self.subFac,
+                               QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+        hboxFlipp      = hbox((QLabel('      '), QLabel('Factor'), self.flippFac,
+                               QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+        hboxMultiSP    = hbox((QLabel('Multiple SF scattering probability'), self.multiSF,
+                               QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+        hboxNormalise  = hbox((QLabel('Normalization'), self.rbnNormaliseTime, self.rbnNormaliseMonitor,
+                              QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum) ))
+        hboxWaveLength = hbox((QLabel('Neutron wavelength (\305)'), self.neutronWaveLength,
+                               QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
 
         grid = QGridLayout()
         grid.addWidget(self.chkdetEffi,    0, 0, 1, 2)
         grid.addLayout(hboxSumVan,         1, 0, 1, 3)
         grid.addWidget(self.chksubInst,    2, 0, 1, 3)
-        grid.addLayout(hboxSubInst,        3, 0, 1, 3)
-        grid.addWidget(self.chkFlippRatio, 4, 0, 1, 2)
-        grid.addLayout(hboxFlipp,          5, 0, 1, 2)
-        grid.addLayout(hboxMultiSP,        6, 0, 1, 4)
-        grid.addLayout(hboxNormalise,      7, 0, 1, 4)
-        grid.addLayout(hboxWaveLength,     8, 0, 1, 4)
-
+        grid.addLayout(hboxSubInst,        3, 0, 1, 4)
+        grid.addItem(spacerFac1,           4, 0)
+        grid.addWidget(self.chkFlippRatio, 5, 0, 1, 2)
+        grid.addLayout(hboxFlipp,          6, 0, 1, 4)
+        grid.addItem(spacerFac2,           7, 0)
+        grid.addLayout(hboxMultiSP,        8, 0, 1, 3)
+        grid.addLayout(hboxNormalise,      9, 0, 1, 4)
+        grid.addLayout(hboxWaveLength,    10, 0, 1, 3)
         gbDataRed.setLayout(grid)
 
         bntGroup = QButtonGroup(self)
@@ -476,44 +474,6 @@ class DNSSetupWidget(BaseWidget):
         bntGroup.addButton(self.rbnXYZ)
         bntGroup.addButton(self.rbnCoherent)
         bntGroup.addButton(self.rbnNo)
-
-        grid = QGridLayout()
-
-        hboxMultiSP = hbox(( self.chkAxQ, self.chkAxD, self.chkAx2Theta))
-        hboxNormalise = hbox((self.rbnXYZ, self.rbnCoherent, self.rbnNo))
-        hboxWaveLength = hbox((QLabel('Omega offset'), self.omegaOffset))
-        hboxWaveLength.addSpacerItem(spacer)
-        hbox4 = hbox((QLabel('a[\305]'), self.latticeA, QLabel('b[\305]'), self.latticeB,
-                      QLabel('c[\305]'), self.latticeC))
-        hbox5 = hbox((QLabel(u'\u03B1[\u00B0]'), self.latticeAlpha, QLabel(u'\u03B2[\u00B0]'),
-                      self.latticeBeta, QLabel(u'\u03B3[\u00B0]'), self.latticeGamma))
-        hbox7 = hbox((QLabel('v'), self.scatterV1, self.scatterV2, self.scatterV3))
-        hbox6 = hbox((QLabel('u'), self.scatterU1, self.scatterU2, self.scatterU3, hbox7))
-
-        #vbox1 = vbox((self.rbnPolyAmor, QLabel('Abscissa'), hboxMultiSP, QLabel('Separation'),
-        #              hboxNormalise, self.rbnSingleCryst, hboxWaveLength, QLabel("Lattice parameters"), hbox4,
-        #              hbox5, QLabel('Scattering Plane'), hbox6, hbox7))
-
-        #vbox2 = vbox((hboxMultiSP, ))
-
-        spacerRbn = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Minimum)
-        grid.addWidget(self.rbnPolyAmor,             0, 0, 1, 2)
-        grid.addWidget(QLabel('Abscissa'),           1, 1)
-        grid.addLayout(hboxMultiSP,                        2, 1, 1, 3)
-        grid.addWidget(QLabel('Separation'),         3, 1)
-        grid.addLayout(hboxNormalise,                        4, 1)
-        grid.addItem(spacerRbn,                      5, 0)
-        grid.addWidget(self.rbnSingleCryst,          6, 0, 1, 2)
-        grid.addLayout(hboxWaveLength,                        7, 1, 1, 2)
-        grid.addWidget(QLabel("Lattice parameters"), 8, 1)
-        grid.addLayout(hbox4,                        9, 1, 1, 4)
-        grid.addLayout(hbox5,                        10, 1, 1, 4)
-        grid.addWidget(QLabel('Scattering Plane'),   11, 1)
-        grid.addLayout(hbox6,                        12, 1, 1, 4)
-        #grid.addLayout(hbox7,                        12, 1, 1, 4)
-
-        gbOutput.setLayout(grid)
-        gbOutput.setContentsMargins(0, 0, 0, 0)
 
         self.ChecksPolyAmor = []
         self.ChecksPolyAmor.append(self.chkAxD)
@@ -540,6 +500,62 @@ class DNSSetupWidget(BaseWidget):
         self.SpinsSingle.append(self.scatterV2)
         self.SpinsSingle.append(self.scatterV3)
 
+        grid = QGridLayout()
+
+        spacerRbn = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Minimum)
+
+        hboxAx         = hbox((self.chkAxQ, self.chkAxD, self.chkAx2Theta))
+        hboxNormalise  = hbox((self.rbnXYZ, self.rbnCoherent, self.rbnNo))
+        hboxWaveLength = hbox((QLabel('Omega offset'), self.omegaOffset,
+                               QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+
+        hboxLatticeA = hbox((QLabel('a[\305]'), self.latticeA,
+                             QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+        hboxLatticeB = hbox((QLabel('b[\305]'), self.latticeB,
+                             QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+        hboxLatticeC = hbox((QLabel('c[\305]'), self.latticeC,
+                             QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+
+        hboxLatticeAlpha = hbox((QLabel(u'\u03B1[\u00B0]'), self.latticeAlpha,
+                                 QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+
+        hboxLatticeBeta = hbox((QLabel(u'\u03B2[\u00B0]'),self.latticeBeta,
+                                QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+
+        hboxLatticeGamma = hbox((QLabel(u'\u03B3[\u00B0]'), self.latticeGamma,
+                                QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+
+        gridLattice = QGridLayout()
+        gridLattice.addLayout(hboxLatticeA, 0, 0)
+        gridLattice.addLayout(hboxLatticeB, 0, 1)
+        gridLattice.addLayout(hboxLatticeC, 0, 2)
+        gridLattice.addLayout(hboxLatticeAlpha, 1, 0)
+        gridLattice.addLayout(hboxLatticeBeta, 1, 1)
+        gridLattice.addLayout(hboxLatticeGamma, 1, 2)
+
+
+        hboxScatterV   = hbox((QLabel('v'), self.scatterV1, self.scatterV2, self.scatterV3))
+        hboxScatterU   = hbox((QLabel('u'), self.scatterU1, self.scatterU2, self.scatterU3, hboxScatterV))
+
+        grid.addWidget(self.rbnPolyAmor,             0, 0, 1, 2)
+        grid.addWidget(QLabel('Abscissa'),           1, 1)
+        grid.addLayout(hboxAx,                       2, 1, 1, 3)
+        grid.addWidget(QLabel('Separation'),         3, 1)
+        grid.addLayout(hboxNormalise,                4, 1)
+        grid.addItem(spacerRbn,                      5, 0)
+        grid.addWidget(self.rbnSingleCryst,          6, 0, 1, 2)
+        grid.addLayout(hboxWaveLength,               7, 1, 1, 2)
+        grid.addWidget(QLabel("Lattice parameters"), 8, 1)
+        grid.addLayout(gridLattice, 9, 1)
+        #grid.addLayout(vboxLattice, 9, 1, 1, 3)
+        #grid.addLayout(hboxLattice,                  9, 1, 1, 4)
+        #grid.addLayout(hboxLattice2,                 10, 1, 1, 4)
+        grid.addWidget(QLabel('Scattering Plane'),   11, 1)
+        grid.addLayout(hboxScatterU,                 12, 1, 1, 4)
+
+        gbOutput.setLayout(grid)
+        gbOutput.setContentsMargins(0, 0, 0, 0)
+
         self.btnSampleDataPath.clicked.connect(self._sampleDataDir)
         self.runNumbersModel.selectCell.connect(self._onSelectedCell)
         self.maskAngleModel.selectCell.connect(self._onSelectedCellMask)
@@ -551,6 +567,12 @@ class DNSSetupWidget(BaseWidget):
         self.chkFlippRatio.clicked.connect(self._flippRatioChanged)
         self.rbnSingleCryst.clicked.connect(self._rbnOutChanged)
         self.rbnPolyAmor.clicked.connect(self._rbnOutChanged)
+
+    def _sampleDataDir(self):
+
+        dirname = self.dir_browse_dialog()
+        if dirname:
+            self.sampleDataPath.setText(dirname)
 
     def _onSelectedCell(self, row, column):
         index = self.runNumbersModel.index(row, column)
@@ -567,6 +589,20 @@ class DNSSetupWidget(BaseWidget):
             self._SaveFileChecked()
         else:
             self._SaveFileNotChecked()
+
+    def _outputDir(self):
+
+        dirname = self.dir_browse_dialog()
+        if dirname:
+            self.outDir.setText(dirname)
+
+
+    def _stdDataDir(self):
+
+        dirname = self.dir_browse_dialog()
+
+        if dirname:
+            self.standardDataPath.setText(dirname)
 
     def _detEffiChanged(self):
         if self.chkdetEffi.isChecked():
@@ -635,28 +671,6 @@ class DNSSetupWidget(BaseWidget):
             rbn.setEnabled(False)
 
 
-    def _outputDir(self):
-
-        fname = QFileDialog.getExistingDirectory(self, 'Open Directory', '/home', QFileDialog.ShowDirsOnly)
-
-        if fname:
-            self.outDir.setText(fname)
-
-
-    def _stdDataDir(self):
-
-        fname = QFileDialog.getExistingDirectory(self, 'Open Directory', '/home', QFileDialog.ShowDirsOnly)
-
-        if fname:
-            self.standardDataPath.setText(fname)
-
-    def _sampleDataDir(self):
-
-        fname = QFileDialog.getExistingDirectory(self, 'Open Directory', '/home', QFileDialog.ShowDirsOnly)
-
-        if fname:
-            self.sampleDataPath.setText(fname)
-
     def get_state(self):
 
         elem = DNSScriptElement()
@@ -679,8 +693,6 @@ class DNSSetupWidget(BaseWidget):
         elem.saveToFile = self.chkSaveToFile.isChecked()
         elem.outDir     = line_text(self.outDir)
         elem.outPrefix  = line_text(self.outFile)
-        elem.out        = elem.OUT_POLY_AMOR if self.rbnPolyAmor.isChecked() else \
-                          elem.OUT_SINGLE_CRYST
 
         elem.standardDataPath   = line_text(self.standardDataPath)
 
@@ -694,12 +706,14 @@ class DNSSetupWidget(BaseWidget):
         elem.normalise      = elem.NORM_TIME if self.rbnNormaliseTime.isChecked() else \
                               elem.NORM_MONITOR
         elem.neutronWaveLen = self.neutronWaveLength.value()
-        elem.intermadiate   = self.chkKeepIntermediate.isChecked()
+
+        elem.out        = elem.OUT_POLY_AMOR if self.rbnPolyAmor.isChecked() else \
+                          elem.OUT_SINGLE_CRYST
 
         elem.outAxisQ      = self.chkAxQ.isChecked()
         elem.outAxisD      = self.chkAxD.isChecked()
         elem.outAxis2Theta = self.chkAx2Theta.isChecked()
-        elem.seperation    = elem.SEP_XYZ if self.rbnXYZ.isChecked() else \
+        elem.separation    = elem.SEP_XYZ if self.rbnXYZ.isChecked() else \
                              elem.SEP_COH if self.rbnCoherent.isChecked() else \
                              elem.SEP_NO
 
@@ -766,12 +780,12 @@ class DNSSetupWidget(BaseWidget):
         else:
             self.flippFac.setEnabled(False)
         self.multiSF.setValue(elem.multiSF)
+        self.multiSF.setEnabled(False)
         if elem.normalise == elem.NORM_TIME:
             self.rbnNormaliseTime.setChecked(True)
         elif elem.normalise == elem.NORM_MONITOR:
             self.rbnNormaliseMonitor.setChecked(True)
         self.neutronWaveLength.setValue(elem.neutronWaveLen)
-        self.chkKeepIntermediate.setChecked(elem.intermadiate)
 
         if elem.out == elem.OUT_POLY_AMOR:
             self.rbnPolyAmor.setChecked(True)
@@ -799,9 +813,9 @@ class DNSSetupWidget(BaseWidget):
         if elem.outAxis2Theta:
             self.chkAx2Theta.setChecked(True)
 
-        if elem.seperation == elem.SEP_XYZ:
+        if elem.separation == elem.SEP_XYZ:
             self.rbnXYZ.setChecked(True)
-        elif elem.seperation == elem.SEP_COH:
+        elif elem.separation == elem.SEP_COH:
             self.rbnCoherent.setChecked(True)
         else:
             self.rbnNo.setChecked(True)

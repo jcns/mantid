@@ -8,7 +8,6 @@ import re
 
 from reduction_gui.reduction.scripter import BaseScriptElement, BaseReductionScripter
 
-
 class DNSScriptElement(BaseScriptElement):
 
     NORM_TIME     = 0
@@ -39,7 +38,7 @@ class DNSScriptElement(BaseScriptElement):
     DEF_OutAxisQ      = True
     DEF_OutAxisD      = True
     DEF_OutAxis2Theta = True
-    DEF_Seperation    = SEP_XYZ
+    DEF_Separation    = SEP_XYZ
 
     DEF_OmegaOffset  = 0.0
     DEF_LatticeA     = 0.0
@@ -71,8 +70,8 @@ class DNSScriptElement(BaseScriptElement):
         self.maskAngles = []
 
         self.saveToFile = self.DEF_SaveToFile
-        self.outDir = ''
-        self.outPrefix = ''
+        self.outDir     = ''
+        self.outPrefix  = ''
 
         self.standardDataPath = ''
 
@@ -85,14 +84,13 @@ class DNSScriptElement(BaseScriptElement):
         self.multiSF        = self.DEF_MultiSF
         self.normalise      = self.DEF_Normalise
         self.neutronWaveLen = self.DEF_NeutWaveLen
-        self.intermadiate   = self.DEF_Intermadiate
 
         self.out = self.DEF_Output
 
         self.outAxisQ      = self.DEF_OutAxisQ
         self.outAxisD      = self.DEF_OutAxisD
         self.outAxis2Theta = self.DEF_OutAxis2Theta
-        self.seperation    = self.DEF_Seperation
+        self.separation    = self.DEF_Separation
 
         self.omegaOffset    = self.DEF_OmegaOffset
         self.latticeA       = self.DEF_LatticeA
@@ -143,14 +141,13 @@ class DNSScriptElement(BaseScriptElement):
         put('multiple_SF_scattering',     self.multiSF)
         put('normalise',                  self.normalise)
         put('neutron_wave_length',        self.neutronWaveLen)
-        put('keep_intermediate',          self.intermadiate)
 
         put('output',             self.out)
 
         put('output_Axis_q',      self.outAxisQ)
         put('output_Axis_d',      self.outAxisD)
         put('output_Axis_2Theta', self.outAxis2Theta)
-        put('seperation',         self.seperation)
+        put('separation',         self.separation)
 
         put('lattice_parameters_a',     self.latticeA)
         put('lattice_parameters_b',     self.latticeB)
@@ -224,14 +221,13 @@ class DNSScriptElement(BaseScriptElement):
             self.multiSF        = get_flt('multiple_SF_scattering',     self.DEF_MultiSF)
             self.normalise      = get_int('normalise',                  self.DEF_Normalise)
             self.neutronWaveLen = get_flt('neutron_wave_length',        self.DEF_NeutWaveLen)
-            self.intermadiate   = get_bol('keep_intermediate',          self.DEF_Intermadiate)
 
             self.out        = get_int('output', self.DEF_Output)
 
             self.outAxisQ      = get_bol('output_Axis_q',      self.DEF_OutAxisQ)
             self.outAxisD      = get_bol('output_Axis_d',      self.DEF_OutAxisD)
             self.outAxis2Theta = get_bol('output_Axis_2Theta', self.DEF_OutAxis2Theta)
-            self.seperation    = get_int('seperation',         self.DEF_Seperation)
+            self.separation    = get_int('separation',         self.DEF_Separation)
 
             self.latticeA     = get_flt('lattice_parameters_a',     self.DEF_LatticeA)
             self.latticeB     = get_flt('lattice_parameters_b',     self.DEF_LatticeB)
@@ -246,9 +242,10 @@ class DNSScriptElement(BaseScriptElement):
             self.scatterV2    = get_flt('scattering_Plane_v_2',     self.DEF_ScatterV2)
             self.scatterV3    = get_flt('scattering_Plane_v_3',     self.DEF_ScatterV3)
 
-
-
     def to_script(self):
+
+        def error(message):
+            raise RuntimeError('DNS reduction error: ' + message)
 
         def _searchFile(path, name):
             files = os.listdir(path)
@@ -282,9 +279,6 @@ class DNSScriptElement(BaseScriptElement):
                             error('file with prefix ' + prefix + ', run number '
                                   + str(number) + ' and suffix ' + suffix + ' not found')
             return fs
-
-        def error(message):
-            raise RuntimeError('DNS reduction error: ' + message)
 
         files = None
 
@@ -405,7 +399,6 @@ class DNSScriptElement(BaseScriptElement):
             norm = 'time'
         datRedSettings['Normalization']                              = norm
         datRedSettings['Neutron wavelength']                         = self.neutronWaveLen
-        datRedSettings['Keep intermediat workspaces']                = str(self.intermadiate)
 
         parameters['Data reduction settings'] = datRedSettings
 
@@ -424,12 +417,12 @@ class DNSScriptElement(BaseScriptElement):
                 outAx += '2Theta'
 
             type['Abscissa'] = outAx
-            if self.seperation == self.SEP_XYZ:
-                type['Seperation'] = 'XYZ'
-            elif self.seperation == self.SEP_COH:
-                type['Seperation'] = 'Coherent/Incoherent'
+            if self.separation == self.SEP_XYZ:
+                type['Separation'] = 'XYZ'
+            elif self.separation == self.SEP_COH:
+                type['Separation'] = 'Coherent/Incoherent'
             else:
-                type['Seperation'] = 'No'
+                type['Separation'] = 'No'
 
         if self.out == self.OUT_SINGLE_CRYST:
             type['Type'] = 'Single Crystal'
@@ -462,9 +455,6 @@ class DNSScriptElement(BaseScriptElement):
 
         parameters['Sample'] = type
 
-
-
-
         print parameters
 
         script = ['']
@@ -476,7 +466,6 @@ class DNSScriptElement(BaseScriptElement):
         l()
 
         return script[0]
-
 
 
 
