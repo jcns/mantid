@@ -314,18 +314,24 @@ class DNSScriptElement(BaseScriptElement):
         if not os.path.lexists(self.standardDataPath):
             error('standard data path not found')
         else:
+            tmp = api.LoadEmptyInstrument(InstrumentName='DNS')
+            instrument = tmp.getInstrument()
+            api.DelteWorkspace(tmp)
             if self.detEffi:
-                found = _searchFile(self.standardDataPath, 'vana')
+                detEffiFilename = instrument.getStringParameter("vana")
+                found = _searchFile(self.standardDataPath, detEffiFilename)
                 if not found:
                     error('no file for detector efficiency correction in '
                           + str(self.standardDataPath) + ' found')
             if self.subInst:
-                found = _searchFile(self.standardDataPath, 'leer')
+                subInstFilename = instrument.getStringParameter("bkg")
+                found = _searchFile(self.standardDataPath, subInstFilename)
                 if not found:
                     error('no file to substract of instrument background for sample in '
                           + str(self.standardDataPath) + ' found')
             if self.flippRatio:
-                found = _searchFile(self.standardDataPath, 'nicr')
+                flippRatioFilename = instrument.getStringParameter("nicr")
+                found = _searchFile(self.standardDataPath, flippRatioFilename)
                 if not found:
                     error('no file for flipping ratio correction in '
                           + str(self.standardDataPath) + ' found')
