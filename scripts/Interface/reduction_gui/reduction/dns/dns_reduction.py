@@ -1,110 +1,112 @@
 import xml.dom.minidom
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from ruamel.yaml.comments import CommentedMap
+from collections import OrderedDict
 import os
 import re
 
 from reduction_gui.reduction.scripter import BaseScriptElement, BaseReductionScripter
+import mantid.simpleapi as api
+
 
 class DNSScriptElement(BaseScriptElement):
 
-    NORM_TIME     = 0
-    NORM_MONITOR  = 1
+    # normalization
+    NORM_TIME = 0
+    NORM_MONITOR = 1
 
-    OUT_POLY_AMOR     = 0
-    OUT_SINGLE_CRYST  = 1
+    OUT_POLY_AMOR = 0
+    OUT_SINGLE_CRYST = 1
 
+    # separation
     SEP_XYZ = 0
     SEP_COH = 1
-    SEP_NO  = 2
+    SEP_NO = 2
 
     DEF_SaveToFile = False
 
-    DEF_DetEffi      = True
-    DEF_SumVan       = False
-    DEF_SubInst      = True
-    DEF_SubFac       = 1.0
-    DEF_FlippRatio   = True
-    DEF_FlippFac     = 1.0
-    DEF_MultiSF      = 0.0
-    DEF_Normalise    = NORM_TIME
-    DEF_NeutWaveLen  = 0.0
-    DEF_Intermadiate = False
+    DEF_DetEffi = True
+    DEF_SumVan = False
+    DEF_SubInst = True
+    DEF_SubFac = 1.0
+    DEF_FlippRatio = True
+    DEF_FlippFac = 1.0
+    DEF_MultiSF = 0.0
+    DEF_Normalise = NORM_TIME
+    DEF_NeutWaveLen = 0.0
+    #DEF_Intermediate = False
 
     DEF_Output = OUT_POLY_AMOR
 
-    DEF_OutAxisQ      = True
-    DEF_OutAxisD      = True
+    DEF_OutAxisQ = True
+    DEF_OutAxisD = True
     DEF_OutAxis2Theta = True
-    DEF_Separation    = SEP_XYZ
+    DEF_Separation = SEP_XYZ
 
-    DEF_OmegaOffset  = 0.0
-    DEF_LatticeA     = 0.0
-    DEF_LatticeB     = 0.0
-    DEF_LatticeC     = 0.0
+    DEF_OmegaOffset = 0.0
+    DEF_LatticeA = 0.0
+    DEF_LatticeB = 0.0
+    DEF_LatticeC = 0.0
     DEF_LatticeAlpha = 0.0
-    DEF_LatticeBeta  = 0.0
+    DEF_LatticeBeta = 0.0
     DEF_LatticeGamma = 0.0
-    DEF_ScatterU1    = 0.0
-    DEF_ScatterU2    = 0.0
-    DEF_ScatterU3    = 0.0
-    DEF_ScatterV1    = 0.0
-    DEF_ScatterV2    = 0.0
-    DEF_ScatterV3    = 0.0
+    DEF_ScatterU1 = 0.0
+    DEF_ScatterU2 = 0.0
+    DEF_ScatterU3 = 0.0
+    DEF_ScatterV1 = 0.0
+    DEF_ScatterV2 = 0.0
+    DEF_ScatterV3 = 0.0
 
     XML_TAG = 'DNSReduction'
 
     def reset(self):
 
-        self.facility_name   = ''
+        self.facility_name = ''
         self.instrument_name = ''
 
         self.sampleDataPath = ''
-        self.filePrefix     = ''
-        self.fileSuffix     = ''
+        self.filePrefix = ''
+        self.fileSuffix = ''
 
         self.dataRuns = []
 
         self.maskAngles = []
 
         self.saveToFile = self.DEF_SaveToFile
-        self.outDir     = ''
-        self.outPrefix  = ''
+        self.outDir = ''
+        self.outPrefix = ''
 
         self.standardDataPath = ''
 
-        self.detEffi        = self.DEF_DetEffi
-        self.sumVan         = self.DEF_SumVan
-        self.subInst        = self.DEF_SubInst
-        self.subFac         = self.DEF_SubFac
-        self.flippRatio     = self.DEF_FlippRatio
-        self.flippFac       = self.DEF_FlippFac
-        self.multiSF        = self.DEF_MultiSF
-        self.normalise      = self.DEF_Normalise
+        self.detEffi = self.DEF_DetEffi
+        self.sumVan = self.DEF_SumVan
+        self.subInst = self.DEF_SubInst
+        self.subFac = self.DEF_SubFac
+        self.flippRatio = self.DEF_FlippRatio
+        self.flippFac = self.DEF_FlippFac
+        self.multiSF = self.DEF_MultiSF
+        self.normalise = self.DEF_Normalise
         self.neutronWaveLen = self.DEF_NeutWaveLen
 
         self.out = self.DEF_Output
 
-        self.outAxisQ      = self.DEF_OutAxisQ
-        self.outAxisD      = self.DEF_OutAxisD
+        self.outAxisQ = self.DEF_OutAxisQ
+        self.outAxisD = self.DEF_OutAxisD
         self.outAxis2Theta = self.DEF_OutAxis2Theta
-        self.separation    = self.DEF_Separation
+        self.separation = self.DEF_Separation
 
-        self.omegaOffset    = self.DEF_OmegaOffset
-        self.latticeA       = self.DEF_LatticeA
-        self.latticeB       = self.DEF_LatticeB
-        self.latticeC       = self.DEF_LatticeC
-        self.latticeAlpha   = self.DEF_LatticeAlpha
-        self.latticeBeta    = self.DEF_LatticeBeta
-        self.latticeGamma   = self.DEF_LatticeGamma
-        self.scatterU1      = self.DEF_ScatterU1
-        self.scatterU2      = self.DEF_ScatterU2
-        self.scatterU3      = self.DEF_ScatterU3
-        self.scatterV1      = self.DEF_ScatterV1
-        self.scatterV2      = self.DEF_ScatterV2
-        self.scatterV3      = self.DEF_ScatterV3
+        self.omegaOffset = self.DEF_OmegaOffset
+        self.latticeA = self.DEF_LatticeA
+        self.latticeB = self.DEF_LatticeB
+        self.latticeC = self.DEF_LatticeC
+        self.latticeAlpha = self.DEF_LatticeAlpha
+        self.latticeBeta = self.DEF_LatticeBeta
+        self.latticeGamma = self.DEF_LatticeGamma
+        self.scatterU1 = self.DEF_ScatterU1
+        self.scatterU2 = self.DEF_ScatterU2
+        self.scatterU3 = self.DEF_ScatterU3
+        self.scatterV1 = self.DEF_ScatterV1
+        self.scatterV2 = self.DEF_ScatterV2
+        self.scatterV3 = self.DEF_ScatterV3
 
     def to_xml(self):
 
@@ -122,7 +124,7 @@ class DNSScriptElement(BaseScriptElement):
             put('data_output_workspace', ws)
             put('data_comment',          cmnt)
 
-        for(min, max) in self.maskAngles:
+        for (min, max) in self.maskAngles:
             put('mask_min_Angle', min)
             put('mask_max_Angle', max)
 
@@ -178,7 +180,7 @@ class DNSScriptElement(BaseScriptElement):
             def get_str(tag, default=''):
                 return BaseScriptElement.getStringElement(dom, tag, default=default)
 
-            def get_int(tag,default):
+            def get_int(tag, default):
                 return BaseScriptElement.getIntElement(dom, tag, default=default)
 
             def get_flt(tag, default):
@@ -187,16 +189,16 @@ class DNSScriptElement(BaseScriptElement):
             def get_strlst(tag):
                 return BaseScriptElement.getStringList(dom, tag)
 
-            def get_bol(tag,default):
+            def get_bol(tag, default):
                 return BaseScriptElement.getBoolElement(dom, tag, default=default)
 
             self.sampleDataPath = get_str('sample_data_path')
-            self.filePrefix     = get_str('file_prefix')
-            self.fileSuffix     = get_str('file_suffix')
+            self.filePrefix = get_str('file_prefix')
+            self.fileSuffix = get_str('file_suffix')
 
-            dataRuns  = get_strlst('data_runs')
+            dataRuns = get_strlst('data_runs')
             dataOutWs = get_strlst('data_output_workspace')
-            dataCmts  = get_strlst('data_comment')
+            dataCmts = get_strlst('data_comment')
 
             for i in range(min(len(dataRuns), len(dataOutWs), len(dataCmts))):
                 self.dataRuns.append((dataRuns[i], dataOutWs[i], dataCmts[i]))
@@ -208,53 +210,53 @@ class DNSScriptElement(BaseScriptElement):
                 self.maskAngles.append((maskMin[i], maskMax[i]))
 
             self.saveToFile = get_bol('save_to_file', self.DEF_SaveToFile)
-            self.outDir     = get_str('output_directory')
-            self.outPrefix  = get_str('output_file_prefix')
+            self.outDir = get_str('output_directory')
+            self.outPrefix = get_str('output_file_prefix')
 
             self.standardDataPath = get_str('standard_data_path')
 
-            self.detEffi        = get_bol('detector_efficiency',        self.DEF_DetEffi)
-            self.sumVan         = get_bol('sum_Vanadium',               self.DEF_SumVan)
-            self.subInst        = get_bol('subtract_instrument',        self.DEF_SubInst)
-            self.subFac         = get_flt('subtract_instrument_factor', self.subFac)
-            self.flippRatio     = get_bol('flipping_ratio',             self.DEF_FlippRatio)
-            self.multiSF        = get_flt('multiple_SF_scattering',     self.DEF_MultiSF)
-            self.normalise      = get_int('normalise',                  self.DEF_Normalise)
-            self.neutronWaveLen = get_flt('neutron_wave_length',        self.DEF_NeutWaveLen)
+            self.detEffi = get_bol('detector_efficiency', self.DEF_DetEffi)
+            self.sumVan = get_bol('sum_Vanadium', self.DEF_SumVan)
+            self.subInst = get_bol('subtract_instrument', self.DEF_SubInst)
+            self.subFac = get_flt('subtract_instrument_factor', self.subFac)
+            self.flippRatio = get_bol('flipping_ratio', self.DEF_FlippRatio)
+            self.multiSF = get_flt('multiple_SF_scattering', self.DEF_MultiSF)
+            self.normalise = get_int('normalise', self.DEF_Normalise)
+            self.neutronWaveLen = get_flt('neutron_wave_length', self.DEF_NeutWaveLen)
 
-            self.out        = get_int('output', self.DEF_Output)
+            self.out = get_int('output', self.DEF_Output)
 
-            self.outAxisQ      = get_bol('output_Axis_q',      self.DEF_OutAxisQ)
-            self.outAxisD      = get_bol('output_Axis_d',      self.DEF_OutAxisD)
+            self.outAxisQ = get_bol('output_Axis_q', self.DEF_OutAxisQ)
+            self.outAxisD = get_bol('output_Axis_d', self.DEF_OutAxisD)
             self.outAxis2Theta = get_bol('output_Axis_2Theta', self.DEF_OutAxis2Theta)
-            self.separation    = get_int('separation',         self.DEF_Separation)
+            self.separation = get_int('separation', self.DEF_Separation)
 
-            self.latticeA     = get_flt('lattice_parameters_a',     self.DEF_LatticeA)
-            self.latticeB     = get_flt('lattice_parameters_b',     self.DEF_LatticeB)
-            self.latticeC     = get_flt('lattice_parameters_c',     self.DEF_LatticeC)
+            self.latticeA = get_flt('lattice_parameters_a', self.DEF_LatticeA)
+            self.latticeB = get_flt('lattice_parameters_b', self.DEF_LatticeB)
+            self.latticeC = get_flt('lattice_parameters_c', self.DEF_LatticeC)
             self.latticeAlpha = get_flt('lattice_parameters_alpha', self.DEF_LatticeAlpha)
-            self.latticeBeta  = get_flt('lattice_parameters_beta',  self.DEF_LatticeBeta)
+            self.latticeBeta = get_flt('lattice_parameters_beta', self.DEF_LatticeBeta)
             self.latticeGamma = get_flt('lattice_parameters_gamma', self.DEF_LatticeGamma)
-            self.scatterU1    = get_flt('scattering_Plane_u_1',     self.DEF_ScatterU1)
-            self.scatterU2    = get_flt('scattering_Plane_u_2',     self.DEF_ScatterU2)
-            self.scatterU3    = get_flt('scattering_Plane_u_3',     self.DEF_ScatterU3)
-            self.scatterV1    = get_flt('scattering_Plane_v_1',     self.DEF_ScatterV1)
-            self.scatterV2    = get_flt('scattering_Plane_v_2',     self.DEF_ScatterV2)
-            self.scatterV3    = get_flt('scattering_Plane_v_3',     self.DEF_ScatterV3)
+            self.scatterU1 = get_flt('scattering_Plane_u_1', self.DEF_ScatterU1)
+            self.scatterU2 = get_flt('scattering_Plane_u_2', self.DEF_ScatterU2)
+            self.scatterU3 = get_flt('scattering_Plane_u_3', self.DEF_ScatterU3)
+            self.scatterV1 = get_flt('scattering_Plane_v_1', self.DEF_ScatterV1)
+            self.scatterV2 = get_flt('scattering_Plane_v_2', self.DEF_ScatterV2)
+            self.scatterV3 = get_flt('scattering_Plane_v_3', self.DEF_ScatterV3)
 
     def to_script(self):
 
         def error(message):
             raise RuntimeError('DNS reduction error: ' + message)
 
-        def _searchFile(path, name):
+        def _search_file(path, name):
             files = os.listdir(path)
             for file in files:
                 if file.__contains__(name):
                     return True
             return False
 
-        def _searchFiles(path, prefix, suffix, dataRun):
+        def _search_files(path, prefix, suffix, dataRun):
             fs = []
             for runs in dataRun:
                 (runNums, outWs, comment) = runs
@@ -294,7 +296,7 @@ class DNSScriptElement(BaseScriptElement):
         if not self.dataRuns:
             error('missing data runs')
         else:
-            files = _searchFiles(self.sampleDataPath, self.filePrefix, self.fileSuffix, self.dataRuns )
+            files = _search_files(self.sampleDataPath, self.filePrefix, self.fileSuffix, self.dataRuns)
 
         for i in range(len(self.maskAngles)):
             (minA, maxA) = self.maskAngles[i]
@@ -316,22 +318,22 @@ class DNSScriptElement(BaseScriptElement):
         else:
             tmp = api.LoadEmptyInstrument(InstrumentName='DNS')
             instrument = tmp.getInstrument()
-            api.DelteWorkspace(tmp)
+            api.DeleteWorkspace(tmp)
             if self.detEffi:
-                detEffiFilename = instrument.getStringParameter("vana")
-                found = _searchFile(self.standardDataPath, detEffiFilename)
+                detEffiFilename = instrument.getStringParameter("vana")[0]
+                found = _search_file(self.standardDataPath, detEffiFilename)
                 if not found:
                     error('no file for detector efficiency correction in '
                           + str(self.standardDataPath) + ' found')
             if self.subInst:
-                subInstFilename = instrument.getStringParameter("bkg")
-                found = _searchFile(self.standardDataPath, subInstFilename)
+                subInstFilename = instrument.getStringParameter("bkg")[0]
+                found = _search_file(self.standardDataPath, subInstFilename)
                 if not found:
                     error('no file to substract of instrument background for sample in '
                           + str(self.standardDataPath) + ' found')
             if self.flippRatio:
-                flippRatioFilename = instrument.getStringParameter("nicr")
-                found = _searchFile(self.standardDataPath, flippRatioFilename)
+                flippRatioFilename = instrument.getStringParameter("nicr")[0]
+                found = _search_file(self.standardDataPath, flippRatioFilename)
                 if not found:
                     error('no file for flipping ratio correction in '
                           + str(self.standardDataPath) + ' found')
@@ -339,16 +341,16 @@ class DNSScriptElement(BaseScriptElement):
         if self.out == self.OUT_POLY_AMOR and not self.outAxisQ and not self.outAxisD and not self.outAxis2Theta:
             error('no abscissa selected')
 
-        parameters = CommentedMap()
+        parameters = OrderedDict()
 
-        sampleData = CommentedMap()
+        sampleData = OrderedDict()
 
-        sampleData['Data path']   = self.sampleDataPath
+        sampleData['Data path'] = self.sampleDataPath
         sampleData['File prefix'] = self.filePrefix
         sampleData['File suffix'] = self.fileSuffix
-        runs = CommentedMap()
+        runs = OrderedDict()
         for i in range(len(self.dataRuns)):
-            run = CommentedMap()
+            run = OrderedDict()
             (runNumber, outWs, comment) = self.dataRuns[i]
             run["Run numbers"] = runNumber
             run["Output Workspace"] = outWs
@@ -358,13 +360,13 @@ class DNSScriptElement(BaseScriptElement):
 
         if files:
             runs['files'] = files
-        sampleData['Data Table']  = runs
+        sampleData['Data Table'] = runs
 
         parameters['Sample Data'] = sampleData
 
-        maskDet = CommentedMap()
+        maskDet = OrderedDict()
         for i in range(len(self.maskAngles)):
-            mask = CommentedMap()
+            mask = OrderedDict()
             (minA, maxA) = self.maskAngles[i]
             mask['Min Angle'] = minA
             mask['Max Angle'] = maxA
@@ -373,42 +375,42 @@ class DNSScriptElement(BaseScriptElement):
 
         parameters['Mask Detectors'] = maskDet
 
-        saveToFile = CommentedMap()
+        saveToFile = OrderedDict()
 
-        saveToFile['Save to file?']       = str(self.saveToFile)
+        saveToFile['Save to file?'] = str(self.saveToFile)
         if self.saveToFile:
-         saveToFile['Output directory']   = self.outDir
-         saveToFile['Output file prefix'] = self.outPrefix
+            saveToFile['Output directory'] = self.outDir
+            saveToFile['Output file prefix'] = self.outPrefix
 
         parameters['Save'] = saveToFile
 
-        stdData = CommentedMap()
+        stdData = OrderedDict()
 
         stdData['Path'] = self.standardDataPath
 
         parameters['Standard Data'] = stdData
 
-        datRedSettings = CommentedMap()
+        datRedSettings = OrderedDict()
 
-        datRedSettings['Detector efficiency correction']             =  str(self.detEffi)
-        datRedSettings['Sum Vandium over detector position']         = str(self.sumVan)
+        datRedSettings['Detector efficiency correction'] = str(self.detEffi)
+        datRedSettings['Sum Vandium over detector position'] = str(self.sumVan)
         datRedSettings['Substract instrument background for sample'] = str(self.subInst)
         if self.subInst:
-            datRedSettings['Substract factor']                       = self.subFac
-        datRedSettings['Flipping ratio correction']                  = str(self.flippRatio)
+            datRedSettings['Substract factor'] = self.subFac
+        datRedSettings['Flipping ratio correction'] = str(self.flippRatio)
         if self.flippRatio:
-            datRedSettings['Flipping ratio factor']                  = self.flippFac
-        datRedSettings['Multiple SF scattering probability']         = self.multiSF
+            datRedSettings['Flipping ratio factor'] = self.flippFac
+        datRedSettings['Multiple SF scattering probability'] = self.multiSF
         if self.normalise == self.NORM_MONITOR:
             norm = 'monitor'
         else:
             norm = 'time'
-        datRedSettings['Normalization']                              = norm
-        datRedSettings['Neutron wavelength']                         = self.neutronWaveLen
+        datRedSettings['Normalization'] = norm
+        datRedSettings['Neutron wavelength'] = self.neutronWaveLen
 
         parameters['Data reduction settings'] = datRedSettings
 
-        type = CommentedMap()
+        type = OrderedDict()
 
         if self.out == self.OUT_POLY_AMOR:
             type['Type'] = 'Polycrystal/Amorphous'
@@ -461,18 +463,17 @@ class DNSScriptElement(BaseScriptElement):
 
         parameters['Sample'] = type
 
-        print parameters
+        print(str(parameters))
 
         script = ['']
 
-        def l(line = ''):
+        def l(line=''):
             script[0] += line + '\n'
 
         l("import numpy as np")
         l()
 
         return script[0]
-
 
 
 class DNSReductionScripter(BaseReductionScripter):

@@ -1,6 +1,7 @@
-import sys
-from PyQt4.QtGui import *
-from PyQt4.QtCore import *
+from PyQt4.QtGui import QLineEdit, QPushButton, QTableView, QHeaderView, QCheckBox, QDoubleSpinBox, QRadioButton, \
+    QLayout, QWidget, QSpacerItem, QHBoxLayout, QVBoxLayout, QLabel, QFrame, QGroupBox, QGridLayout, QButtonGroup, \
+    QSizePolicy
+from PyQt4.QtCore import QAbstractTableModel, pyqtSignal, QModelIndex, Qt
 
 from reduction_gui.widgets.base_widget import BaseWidget
 from reduction_gui.reduction.dns.dns_reduction import DNSScriptElement
@@ -16,29 +17,29 @@ class DNSSetupWidget(BaseWidget):
             QAbstractTableModel.__init__(self, parent)
             self.tableData = []
 
-        def _getRowNumbers(self):
+        def _get_row_numbers(self):
             return len(self.tableData)
 
-        def _getRow(self, row):
-            return self.tableData[row] if row < self._getRowNumbers() else ('', '', '')
+        def _get_row(self, row):
+            return self.tableData[row] if row < self._get_row_numbers() else ('', '', '')
 
-        def _isRowEmpty(self, row):
-            (runs, outws, comment) = self._getRow(row)
-            return not str(runs).strip() and not str(outws).strip() and not str(comment).strip()
+        def _is_row_empty(self, row):
+            (runs, outWs, comment) = self._get_row(row)
+            return not str(runs).strip() and not str(outWs).strip() and not str(comment).strip()
 
-        def _removeTrailingEmptyRows(self):
-            for row in reversed(range(self._getRowNumbers())):
-                if self._isRowEmpty(row):
+        def _remove_trailing_empty_rows(self):
+            for row in reversed(range(self._get_row_numbers())):
+                if self._is_row_empty(row):
                     del self.tableData[row]
                 else:
                     break
 
-        def _setNumRows(self, numRows):
-            while self._getRowNumbers() < numRows:
+        def _set_num_rows(self, numRows):
+            while self._get_row_numbers() < numRows:
                 self.tableData.append(('', '', ''))
 
-        def _setCell(self, row, col, text):
-            self._setNumRows(row + 1)
+        def _set_cell(self, row, col, text):
+            self._set_num_rows(row + 1)
             (runNumbers, outWs, comment) = self.tableData[row]
 
             text = str(text).strip()
@@ -51,16 +52,16 @@ class DNSSetupWidget(BaseWidget):
 
             self.tableData[row] = (runNumbers, outWs, comment)
 
-        def _getCell(self, row, col):
-            return str(self._getRow(row)[col]).strip()
+        def _get_cell(self, row, col):
+            return str(self._get_row(row)[col]).strip()
 
         headers = ('Run numbers', 'Output Workspace', 'Comment')
         selectCell = pyqtSignal(int, int)
 
-        def rowCount(self, _ = QModelIndex()):
-            return self._getRowNumbers() + 1
+        def rowCount(self, _=QModelIndex()):
+            return self._get_row_numbers() + 1
 
-        def columnCount(self, _ = QModelIndex()):
+        def columnCount(self, _=QModelIndex()):
             return 3
 
         def headerData(self, selction, orientation, role):
@@ -71,7 +72,7 @@ class DNSSetupWidget(BaseWidget):
 
         def data(self, index, role):
             if Qt.DisplayRole == role or Qt.EditRole == role:
-                return self._getCell(index.row(), index.column())
+                return self._get_cell(index.row(), index.column())
 
             return None
 
@@ -79,8 +80,8 @@ class DNSSetupWidget(BaseWidget):
             row = index.row()
             col = index.column()
 
-            self._setCell(row, col, text)
-            self._removeTrailingEmptyRows()
+            self._set_cell(row, col, text)
+            self._remove_trailing_empty_rows()
 
             self.reset()
 
@@ -104,30 +105,30 @@ class DNSSetupWidget(BaseWidget):
             QAbstractTableModel.__init__(self, parent)
             self.tableData = []
 
-        def _getRowNumbers(self):
+        def _get_row_numbers(self):
             return len(self.tableData)
 
-        def _getRow(self, row):
-            return self.tableData[row] if row < self._getRowNumbers() else ('', '')
+        def _get_row(self, row):
+            return self.tableData[row] if row < self._get_row_numbers() else ('', '')
 
-        def _isRowEmpty(self, row):
-            (minAngle, maxAngle) = self._getRow(row)
+        def _is_row_empty(self, row):
+            (minAngle, maxAngle) = self._get_row(row)
             return not str(minAngle).strip() and not str(maxAngle).strip()
 
-        def _removeTrailingEmptyRows(self):
-            for row in reversed(range(self._getRowNumbers())):
-                if self._isRowEmpty(row):
+        def _remove_trailing_empty_rows(self):
+            for row in reversed(range(self._get_row_numbers())):
+                if self._is_row_empty(row):
                     del self.tableData[row]
                 else:
                     break
 
-        def _setNumRows(self, numRows):
-            while self._getRowNumbers() < numRows:
+        def _set_num_rows(self, numRows):
+            while self._get_row_numbers() < numRows:
                 self.tableData.append(('', ''))
 
-        def _setCell(self, row, col, text):
+        def _set_cell(self, row, col, text):
 
-            self._setNumRows(row + 1)
+            self._set_num_rows(row + 1)
             (minAngle, maxAngle) = self.tableData[row]
 
             text = str(text).strip()
@@ -139,14 +140,14 @@ class DNSSetupWidget(BaseWidget):
 
             self.tableData[row] = (minAngle, maxAngle)
 
-        def _getCell(self, row, col):
-            return str(self._getRow(row)[col]).strip()
+        def _get_cell(self, row, col):
+            return str(self._get_row(row)[col]).strip()
 
         headers = ('Min Angle[\305]', 'Max Angle[\305]')
         selectCell = pyqtSignal(int, int)
 
         def rowCount(self, _=QModelIndex()):
-            return self._getRowNumbers() + 1
+            return self._get_row_numbers() + 1
 
         def columnCount(self, _=QModelIndex()):
             return 2
@@ -159,7 +160,7 @@ class DNSSetupWidget(BaseWidget):
 
         def data(self, index, role):
             if Qt.DisplayRole == role or Qt.EditRole == role:
-                return self._getCell(index.row(), index.column())
+                return self._get_cell(index.row(), index.column())
 
             return None
 
@@ -167,8 +168,8 @@ class DNSSetupWidget(BaseWidget):
             row = index.row()
             col = index.column()
 
-            self._setCell(row, col, text)
-            self._removeTrailingEmptyRows()
+            self._set_cell(row, col, text)
+            self._remove_trailing_empty_rows()
 
             self.reset()
 
@@ -186,58 +187,58 @@ class DNSSetupWidget(BaseWidget):
         def flags(self, _):
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
 
-
-    TIP_sampleDataPath    = ''
+    TIP_sampleDataPath = ''
     TIP_btnSampleDataPath = ''
-    TIP_sampleFilePre     = ''
-    TIP_sampleFileSuff    = ''
+    TIP_sampleFilePre = ''
+    TIP_sampleFileSuff = ''
 
     TIP_runsView = ''
 
     TIP_maskAngle = ''
 
     TIP_chkSaveToFile = ''
-    TIP_outDir        = ''
-    TIP_btnOutDir     = ''
-    TIP_outFile       = ''
+    TIP_outDir = ''
+    TIP_btnOutDir = ''
+    TIP_outFile = ''
 
-    TIP_standardDataPath    = ''
+    TIP_standardDataPath = ''
     TIP_btnStandardDataPath = ''
 
-    TIP_chkDetEffi          = ''
-    TIP_chkSumVan           = ''
-    TIP_chkSubInst          = ''
-    TIP_subFac              = ''
-    TIP_chkFlippRatio       = ''
-    TIP_flippFac            = ''
-    TIP_multiSF             = ''
-    TIP_rbnNormaliseTime    = ''
+    TIP_chkDetEffi = ''
+    TIP_chkSumVan = ''
+    TIP_chkSubInst = ''
+    TIP_subFac = ''
+    TIP_chkFlippRatio = ''
+    TIP_flippFac = ''
+    TIP_multiSF = ''
+    TIP_rbnNormaliseTime = ''
     TIP_rbnNormaliseMonitor = ''
-    TIP_neutronWaveLen      = ''
+    TIP_neutronWaveLen = ''
 
-    TIP_rbnPolyAmor    = ''
+    TIP_rbnPolyAmor = ''
     TIP_rbnSingleCryst = ''
-    TIP_chkAxQ         = ''
-    TIP_chkAxD         = ''
-    TIP_chkAx2Theta    = ''
-    TIP_rbnXYZ         = ''
-    TIP_rbnCoherent    = ''
-    TIP_rbnNo          = ''
-    TIP_omegaOffset    = ''
-    TIP_latticeA       = ''
-    TIP_latticeB       = ''
-    TIP_latticeC       = ''
-    TIP_latticeAlpha   = ''
-    TIP_latticeBeta    = ''
-    TIP_latticeGamma   = ''
-    TIP_scatterU1      = ''
-    TIP_scatterU2      = ''
-    TIP_scatterU3      = ''
-    TIP_scatterV1      = ''
-    TIP_scatterV2      = ''
-    TIP_scatterV3      = ''
+    TIP_chkAxQ = ''
+    TIP_chkAxD = ''
+    TIP_chkAx2Theta = ''
+    TIP_rbnXYZ = ''
+    TIP_rbnCoherent = ''
+    TIP_rbnNo = ''
+    TIP_omegaOffset = ''
+    TIP_latticeA = ''
+    TIP_latticeB = ''
+    TIP_latticeC = ''
+    TIP_latticeAlpha = ''
+    TIP_latticeBeta = ''
+    TIP_latticeGamma = ''
+    TIP_scatterU1 = ''
+    TIP_scatterU2 = ''
+    TIP_scatterU3 = ''
+    TIP_scatterV1 = ''
+    TIP_scatterV2 = ''
+    TIP_scatterV3 = ''
 
     def __init__(self, settings):
+
         BaseWidget.__init__(self, settings=settings)
         inf = float('inf')
 
@@ -246,20 +247,20 @@ class DNSSetupWidget(BaseWidget):
                 widget.setToolTip(text)
             return widget
 
-        def set_spin(spin, minVal = -inf, maxVal= +inf):
+        def set_spin(spin, minVal=-inf, maxVal=+inf):
             spin.setRange(minVal, maxVal)
             spin.setDecimals(2)
             spin.setSingleStep(0.01)
 
-        def set_spinLattice(spin, minVal = -inf, maxVal= +inf):
+        def set_spin_lattice(spin, minVal=-inf, maxVal=+inf):
             spin.setRange(minVal, maxVal)
             spin.setDecimals(4)
             spin.setSingleStep(0.01)
 
-        self.sampleDataPath    = tip(QLineEdit(),           self.TIP_sampleDataPath)
+        self.sampleDataPath = tip(QLineEdit(), self.TIP_sampleDataPath)
         self.btnSampleDataPath = tip(QPushButton('Browse'), self.TIP_btnSampleDataPath)
-        self.sampleFilePre     = tip(QLineEdit(),           self.TIP_sampleFilePre)
-        self.sampleFileSuff    = tip(QLineEdit(),           self.TIP_sampleFileSuff)
+        self.sampleFilePre = tip(QLineEdit(), self.TIP_sampleFilePre)
+        self.sampleFileSuff = tip(QLineEdit(), self.TIP_sampleFileSuff)
 
         self.runsView = tip(QTableView(self), self.TIP_runsView)
         self.runsView.horizontalHeader().setResizeMode(QHeaderView.Stretch)
@@ -276,56 +277,56 @@ class DNSSetupWidget(BaseWidget):
         self.maskAngleView.setModel(self.maskAngleModel)
 
         self.chkSaveToFile = tip(QCheckBox('Save to file'), self.TIP_chkSaveToFile)
-        self.outDir        = tip(QLineEdit(),               self.TIP_outDir)
-        self.btnOutDir     = tip(QPushButton('Browse'),     self.TIP_btnOutDir)
-        self.outFile       = tip(QLineEdit(),               self.TIP_outFile)
+        self.outDir = tip(QLineEdit(), self.TIP_outDir)
+        self.btnOutDir = tip(QPushButton('Browse'), self.TIP_btnOutDir)
+        self.outFile = tip(QLineEdit(), self.TIP_outFile)
 
-        self.standardDataPath    = tip(QLineEdit(),           self.TIP_standardDataPath)
+        self.standardDataPath = tip(QLineEdit(), self.TIP_standardDataPath)
         self.btnStandardDataPath = tip(QPushButton('Browse'), self.TIP_btnStandardDataPath)
 
-        self.chkdetEffi          = tip(QCheckBox('Detector efficiency correction'),            self.TIP_chkDetEffi)
-        self.chksumVan           = tip(QCheckBox('Sum Vanadium over detector position'),       self.TIP_chkSumVan)
-        self.chksubInst          = tip(QCheckBox('Subtract instrument background for sample'), self.TIP_chkSubInst)
-        self.subFac              = tip(QDoubleSpinBox(),                                       self.TIP_subFac)
-        self.chkFlippRatio       = tip(QCheckBox('Flipping ratio correction'),                 self.TIP_chkFlippRatio)
-        self.flippFac            = tip(QDoubleSpinBox(),                                       self.TIP_flippFac)
-        self.multiSF             = tip(QDoubleSpinBox(),                                       self.TIP_multiSF)
-        self.rbnNormaliseTime    = tip(QRadioButton('time'),                                   self.TIP_rbnNormaliseTime)
-        self.rbnNormaliseMonitor = tip(QRadioButton('monitor'),                                self.TIP_rbnNormaliseMonitor)
-        self.neutronWaveLength   = tip(QDoubleSpinBox(),                                       self.TIP_neutronWaveLen)
-        set_spin(self.subFac,            0.0)
-        set_spin(self.flippFac,          0.0)
-        set_spin(self.multiSF,           0.0, 1.0)
+        self.chkdetEffi = tip(QCheckBox('Detector efficiency correction'), self.TIP_chkDetEffi)
+        self.chksumVan = tip(QCheckBox('Sum Vanadium over detector position'), self.TIP_chkSumVan)
+        self.chksubInst = tip(QCheckBox('Subtract instrument background for sample'), self.TIP_chkSubInst)
+        self.subFac = tip(QDoubleSpinBox(), self.TIP_subFac)
+        self.chkFlippRatio = tip(QCheckBox('Flipping ratio correction'), self.TIP_chkFlippRatio)
+        self.flippFac = tip(QDoubleSpinBox(), self.TIP_flippFac)
+        self.multiSF = tip(QDoubleSpinBox(), self.TIP_multiSF)
+        self.rbnNormaliseTime = tip(QRadioButton('time'), self.TIP_rbnNormaliseTime)
+        self.rbnNormaliseMonitor = tip(QRadioButton('monitor'), self.TIP_rbnNormaliseMonitor)
+        self.neutronWaveLength = tip(QDoubleSpinBox(),  self.TIP_neutronWaveLen)
+        set_spin(self.subFac, 0.0)
+        set_spin(self.flippFac, 0.0)
+        set_spin(self.multiSF, 0.0, 1.0)
         set_spin(self.neutronWaveLength, 0.0)
 
-        self.rbnPolyAmor    = tip(QRadioButton('Polycrystal/Amorphous'), self.TIP_rbnPolyAmor)
-        self.chkAxQ         = tip(QCheckBox('q'),                        self.TIP_chkAxQ)
-        self.chkAxD         = tip(QCheckBox('d'),                        self.TIP_chkAxD)
-        self.chkAx2Theta    = tip(QCheckBox(u'2\u0398'),                 self.TIP_chkAx2Theta)
-        self.rbnXYZ         = tip(QRadioButton('XYZ'),                   self.TIP_rbnXYZ)
-        self.rbnCoherent    = tip(QRadioButton('Coherent/Incoherent'),   self.TIP_rbnCoherent)
-        self.rbnNo          = tip(QRadioButton('No'),                    self.TIP_rbnNo)
+        self.rbnPolyAmor = tip(QRadioButton('Polycrystal/Amorphous'), self.TIP_rbnPolyAmor)
+        self.chkAxQ = tip(QCheckBox('q'), self.TIP_chkAxQ)
+        self.chkAxD = tip(QCheckBox('d'), self.TIP_chkAxD)
+        self.chkAx2Theta = tip(QCheckBox(u'2\u0398'), self.TIP_chkAx2Theta)
+        self.rbnXYZ = tip(QRadioButton('XYZ'), self.TIP_rbnXYZ)
+        self.rbnCoherent = tip(QRadioButton('Coherent/Incoherent'), self.TIP_rbnCoherent)
+        self.rbnNo = tip(QRadioButton('No'), self.TIP_rbnNo)
 
         self.rbnSingleCryst = tip(QRadioButton('Single Crystal'), self.TIP_rbnSingleCryst)
-        self.omegaOffset    = tip(QDoubleSpinBox(),               self.TIP_omegaOffset)
-        self.latticeA       = tip(QDoubleSpinBox(),               self.TIP_latticeA)
-        self.latticeB       = tip(QDoubleSpinBox(),               self.TIP_latticeB)
-        self.latticeC       = tip(QDoubleSpinBox(),               self.TIP_latticeC)
-        self.latticeAlpha   = tip(QDoubleSpinBox(),               self.TIP_latticeAlpha)
-        self.latticeBeta    = tip(QDoubleSpinBox(),               self.TIP_latticeBeta)
-        self.latticeGamma   = tip(QDoubleSpinBox(),               self.TIP_latticeGamma)
-        self.scatterU1      = tip(QDoubleSpinBox(),               self.TIP_scatterU1)
-        self.scatterU2      = tip(QDoubleSpinBox(),               self.TIP_scatterU2)
-        self.scatterU3      = tip(QDoubleSpinBox(),               self.TIP_scatterU3)
-        self.scatterV1      = tip(QDoubleSpinBox(),               self.TIP_scatterV1)
-        self.scatterV2      = tip(QDoubleSpinBox(),               self.TIP_scatterV2)
-        self.scatterV3      = tip(QDoubleSpinBox(),               self.TIP_scatterV3)
+        self.omegaOffset = tip(QDoubleSpinBox(), self.TIP_omegaOffset)
+        self.latticeA = tip(QDoubleSpinBox(), self.TIP_latticeA)
+        self.latticeB = tip(QDoubleSpinBox(), self.TIP_latticeB)
+        self.latticeC = tip(QDoubleSpinBox(), self.TIP_latticeC)
+        self.latticeAlpha = tip(QDoubleSpinBox(), self.TIP_latticeAlpha)
+        self.latticeBeta = tip(QDoubleSpinBox(), self.TIP_latticeBeta)
+        self.latticeGamma = tip(QDoubleSpinBox(), self.TIP_latticeGamma)
+        self.scatterU1 = tip(QDoubleSpinBox(), self.TIP_scatterU1)
+        self.scatterU2 = tip(QDoubleSpinBox(), self.TIP_scatterU2)
+        self.scatterU3 = tip(QDoubleSpinBox(), self.TIP_scatterU3)
+        self.scatterV1 = tip(QDoubleSpinBox(), self.TIP_scatterV1)
+        self.scatterV2 = tip(QDoubleSpinBox(), self.TIP_scatterV2)
+        self.scatterV3 = tip(QDoubleSpinBox(), self.TIP_scatterV3)
         set_spin(self.omegaOffset)
-        set_spinLattice(self.latticeA, 0)
-        set_spinLattice(self.latticeB, 0)
-        set_spinLattice(self.latticeC, 0)
+        set_spin_lattice(self.latticeA, 0)
+        set_spin_lattice(self.latticeB, 0)
+        set_spin_lattice(self.latticeC, 0)
         set_spin(self.latticeAlpha, 0)
-        set_spin(self.latticeBeta,  0)
+        set_spin(self.latticeBeta, 0)
         set_spin(self.latticeGamma, 0)
         set_spin(self.scatterU1)
         set_spin(self.scatterU2)
@@ -337,7 +338,7 @@ class DNSSetupWidget(BaseWidget):
         def _box(cls, widgets):
             box = cls()
             for wgt in widgets:
-                if isinstance(wgt,QLayout):
+                if isinstance(wgt, QLayout):
                     box.addLayout(wgt)
                 elif isinstance(wgt, QWidget):
                     box.addWidget(wgt)
@@ -359,45 +360,45 @@ class DNSSetupWidget(BaseWidget):
                 label.setToolTip(tip)
             return label
 
-        def _frameBox(frame, box) :
+        def _frame_box(frame, box) :
             frame.setFrameShape(QFrame.Box)
             frame.setLayout(box)
 
-        gbSampleData   = QGroupBox('Sample data')
-        gbMaskDet      = QGroupBox('Mask Detectors')
-        gbOut          = QGroupBox()
-        gbStdData      = QGroupBox('Standard data')
-        gbDataRed      = QGroupBox('Data reduction settings')
-        gbOutput       = QGroupBox()
+        gbSampleData = QGroupBox('Sample data')
+        gbMaskDet = QGroupBox('Mask Detectors')
+        gbOut = QGroupBox()
+        gbStdData = QGroupBox('Standard data')
+        gbDataRed = QGroupBox('Data reduction settings')
+        gbOutput = QGroupBox()
 
         box = QHBoxLayout()
         self._layout.addLayout(box)
 
         sampleBox = vbox((gbSampleData, self.runsView))
         frameSampleBox = QFrame()
-        _frameBox(frameSampleBox, sampleBox)
+        _frame_box(frameSampleBox, sampleBox)
 
-        maskDetectorBox = vbox((gbMaskDet, ))
+        maskDetectorBox = vbox((gbMaskDet,))
         frameMaskDetectorBox = QFrame()
-        _frameBox(frameMaskDetectorBox, maskDetectorBox)
+        _frame_box(frameMaskDetectorBox, maskDetectorBox)
 
         outBox = vbox((self.chkSaveToFile, gbOut))
         frameOutBox = QFrame()
-        _frameBox(frameOutBox, outBox)
+        _frame_box(frameOutBox, outBox)
 
-        stdBox = vbox((gbStdData, ))
+        stdBox = vbox((gbStdData,))
         frameStdData = QFrame()
-        _frameBox(frameStdData, stdBox)
+        _frame_box(frameStdData, stdBox)
 
-        dataRedBox = vbox((gbDataRed, ))
+        dataRedBox = vbox((gbDataRed,))
         frameDataRedBox = QFrame()
-        _frameBox(frameDataRedBox, dataRedBox)
+        _frame_box(frameDataRedBox, dataRedBox)
 
-        OutputBox = vbox((gbOutput, ))
+        OutputBox = vbox((gbOutput,))
         frameOutputBox = QFrame()
-        _frameBox(frameOutputBox, OutputBox)
+        _frame_box(frameOutputBox, OutputBox)
 
-        box.addLayout(vbox((frameSampleBox,frameMaskDetectorBox, frameOutBox)))
+        box.addLayout(vbox((frameSampleBox, frameMaskDetectorBox, frameOutBox)))
         box.addLayout(vbox((frameStdData, frameDataRedBox, frameOutputBox)))
 
         grid = QGridLayout()
@@ -439,16 +440,16 @@ class DNSSetupWidget(BaseWidget):
         spacerFac1 = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Minimum)
         spacerFac2 = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Minimum)
 
-        hboxSumVan     = hbox((QLabel('      '), self.chksumVan,
-                               QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
-        hboxSubInst    = hbox((QLabel('      '), QLabel('Factor'), self.subFac,
-                               QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
-        hboxFlipp      = hbox((QLabel('      '), QLabel('Factor'), self.flippFac,
-                               QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
-        hboxMultiSP    = hbox((QLabel('Multiple SF scattering probability'), self.multiSF,
-                               QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
-        hboxNormalise  = hbox((QLabel('Normalization'), self.rbnNormaliseTime, self.rbnNormaliseMonitor,
-                              QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum) ))
+        hboxSumVan = hbox((QLabel('      '), self.chksumVan,
+                           QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+        hboxSubInst = hbox((QLabel('      '), QLabel('Factor'), self.subFac,
+                            QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+        hboxFlipp = hbox((QLabel('      '), QLabel('Factor'), self.flippFac,
+                          QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+        hboxMultiSP = hbox((QLabel('Multiple SF scattering probability'), self.multiSF,
+                            QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
+        hboxNormalise = hbox((QLabel('Normalization'), self.rbnNormaliseTime, self.rbnNormaliseMonitor,
+                              QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
         hboxWaveLength = hbox((QLabel('Neutron wavelength (\305)'), self.neutronWaveLength,
                                QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
 
@@ -504,8 +505,8 @@ class DNSSetupWidget(BaseWidget):
 
         spacerRbn = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Minimum)
 
-        hboxAx         = hbox((self.chkAxQ, self.chkAxD, self.chkAx2Theta))
-        hboxNormalise  = hbox((self.rbnXYZ, self.rbnCoherent, self.rbnNo))
+        hboxAx = hbox((self.chkAxQ, self.chkAxD, self.chkAx2Theta))
+        hboxNormalise = hbox((self.rbnXYZ, self.rbnCoherent, self.rbnNo))
         hboxWaveLength = hbox((QLabel('Omega offset'), self.omegaOffset,
                                QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
 
@@ -526,16 +527,15 @@ class DNSSetupWidget(BaseWidget):
                                 QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
 
         gridLattice = QGridLayout()
-        gridLattice.addLayout(hboxLatticeA, 0, 0)
-        gridLattice.addLayout(hboxLatticeB, 0, 1)
-        gridLattice.addLayout(hboxLatticeC, 0, 2)
+        gridLattice.addLayout(hboxLatticeA,     0, 0)
+        gridLattice.addLayout(hboxLatticeB,     0, 1)
+        gridLattice.addLayout(hboxLatticeC,     0, 2)
         gridLattice.addLayout(hboxLatticeAlpha, 1, 0)
-        gridLattice.addLayout(hboxLatticeBeta, 1, 1)
+        gridLattice.addLayout(hboxLatticeBeta,  1, 1)
         gridLattice.addLayout(hboxLatticeGamma, 1, 2)
 
-
-        hboxScatterV   = hbox((QLabel('v'), self.scatterV1, self.scatterV2, self.scatterV3))
-        hboxScatterU   = hbox((QLabel('u'), self.scatterU1, self.scatterU2, self.scatterU3, hboxScatterV))
+        hboxScatterV = hbox((QLabel('v'), self.scatterV1, self.scatterV2, self.scatterV3))
+        hboxScatterU = hbox((QLabel('u'), self.scatterU1, self.scatterU2, self.scatterU3, hboxScatterV))
 
         grid.addWidget(self.rbnPolyAmor,             0, 0, 1, 2)
         grid.addWidget(QLabel('Abscissa'),           1, 1)
@@ -546,12 +546,9 @@ class DNSSetupWidget(BaseWidget):
         grid.addWidget(self.rbnSingleCryst,          6, 0, 1, 2)
         grid.addLayout(hboxWaveLength,               7, 1, 1, 2)
         grid.addWidget(QLabel("Lattice parameters"), 8, 1)
-        grid.addLayout(gridLattice, 9, 1)
-        #grid.addLayout(vboxLattice, 9, 1, 1, 3)
-        #grid.addLayout(hboxLattice,                  9, 1, 1, 4)
-        #grid.addLayout(hboxLattice2,                 10, 1, 1, 4)
-        grid.addWidget(QLabel('Scattering Plane'),   11, 1)
-        grid.addLayout(hboxScatterU,                 12, 1, 1, 4)
+        grid.addLayout(gridLattice,                  9, 1)
+        grid.addWidget(QLabel('Scattering Plane'),  11, 1)
+        grid.addLayout(hboxScatterU,                12, 1, 1, 4)
 
         gbOutput.setLayout(grid)
         gbOutput.setContentsMargins(0, 0, 0, 0)
@@ -595,7 +592,6 @@ class DNSSetupWidget(BaseWidget):
         dirname = self.dir_browse_dialog()
         if dirname:
             self.outDir.setText(dirname)
-
 
     def _stdDataDir(self):
 
@@ -670,7 +666,6 @@ class DNSSetupWidget(BaseWidget):
         for rbn in self.RbnsPolyAmor:
             rbn.setEnabled(False)
 
-
     def get_state(self):
 
         elem = DNSScriptElement()
@@ -678,58 +673,56 @@ class DNSSetupWidget(BaseWidget):
         def line_text(lineEdit):
             return lineEdit.text().strip()
 
-
-        elem.facility_name   = self._settings.facility_name
+        elem.facility_name = self._settings.facility_name
         elem.instrument_name = self._settings.instrument_name
 
         elem.sampleDataPath = line_text(self.sampleDataPath)
-        elem.filePrefix     = line_text(self.sampleFilePre)
-        elem.fileSuffix     = line_text(self.sampleFileSuff)
+        elem.filePrefix = line_text(self.sampleFilePre)
+        elem.fileSuffix = line_text(self.sampleFileSuff)
 
-        elem.dataRuns       = self.runNumbersModel.tableData
+        elem.dataRuns = self.runNumbersModel.tableData
 
         elem.maskAngles = self.maskAngleModel.tableData
 
         elem.saveToFile = self.chkSaveToFile.isChecked()
-        elem.outDir     = line_text(self.outDir)
-        elem.outPrefix  = line_text(self.outFile)
+        elem.outDir = line_text(self.outDir)
+        elem.outPrefix = line_text(self.outFile)
 
-        elem.standardDataPath   = line_text(self.standardDataPath)
+        elem.standardDataPath = line_text(self.standardDataPath)
 
-        elem.detEffi        = self.chkdetEffi.isChecked()
-        elem.sumVan         = self.chksumVan.isChecked()
-        elem.subInst        = self.chksubInst.isChecked()
-        elem.subFac         = self.subFac.value()
-        elem.flippRatio     = self.chkFlippRatio.isChecked()
-        elem.flippFac       = self.flippFac.value()
-        elem.multiSF        = self.multiSF.value()
-        elem.normalise      = elem.NORM_TIME if self.rbnNormaliseTime.isChecked() else \
-                              elem.NORM_MONITOR
+        elem.detEffi = self.chkdetEffi.isChecked()
+        elem.sumVan = self.chksumVan.isChecked()
+        elem.subInst = self.chksubInst.isChecked()
+        elem.subFac = self.subFac.value()
+        elem.flippRatio = self.chkFlippRatio.isChecked()
+        elem.flippFac = self.flippFac.value()
+        elem.multiSF = self.multiSF.value()
+        elem.normalise = elem.NORM_TIME if self.rbnNormaliseTime.isChecked() else \
+            elem.NORM_MONITOR
         elem.neutronWaveLen = self.neutronWaveLength.value()
 
-        elem.out        = elem.OUT_POLY_AMOR if self.rbnPolyAmor.isChecked() else \
-                          elem.OUT_SINGLE_CRYST
+        elem.out = elem.OUT_POLY_AMOR if self.rbnPolyAmor.isChecked() else \
+            elem.OUT_SINGLE_CRYST
 
-        elem.outAxisQ      = self.chkAxQ.isChecked()
-        elem.outAxisD      = self.chkAxD.isChecked()
+        elem.outAxisQ = self.chkAxQ.isChecked()
+        elem.outAxisD = self.chkAxD.isChecked()
         elem.outAxis2Theta = self.chkAx2Theta.isChecked()
-        elem.separation    = elem.SEP_XYZ if self.rbnXYZ.isChecked() else \
-                             elem.SEP_COH if self.rbnCoherent.isChecked() else \
-                             elem.SEP_NO
+        elem.separation = elem.SEP_XYZ if self.rbnXYZ.isChecked() else \
+            elem.SEP_COH if self.rbnCoherent.isChecked() else elem.SEP_NO
 
-        elem.omegaOffset  = self.omegaOffset.value()
-        elem.latticeA     = self.latticeA.value()
-        elem.latticeB     = self.latticeB.value()
-        elem.latticeC     = self.latticeC.value()
+        elem.omegaOffset = self.omegaOffset.value()
+        elem.latticeA = self.latticeA.value()
+        elem.latticeB = self.latticeB.value()
+        elem.latticeC = self.latticeC.value()
         elem.latticeAlpha = self.latticeAlpha.value()
-        elem.latticeBeta  = self.latticeBeta.value()
+        elem.latticeBeta = self.latticeBeta.value()
         elem.latticeGamma = self.latticeGamma.value()
-        elem.scatterU1    = self.scatterU1.value()
-        elem.scatterU2    = self.scatterU2.value()
-        elem.scatterU3    = self.scatterU3.value()
-        elem.scatterV1    = self.scatterV1.value()
-        elem.scatterV2    = self.scatterV2.value()
-        elem.scatterV3    = self.scatterV3.value()
+        elem.scatterU1 = self.scatterU1.value()
+        elem.scatterU2 = self.scatterU2.value()
+        elem.scatterU3 = self.scatterU3.value()
+        elem.scatterV1 = self.scatterV1.value()
+        elem.scatterV2 = self.scatterV2.value()
+        elem.scatterV3 = self.scatterV3.value()
 
         return elem
 
