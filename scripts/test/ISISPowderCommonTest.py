@@ -13,7 +13,8 @@ class ISISPowderCommonTest(unittest.TestCase):
     def test_cal_map_dict_helper(self):
         missing_key_name = "wrong_key"
         correct_key_name = "right_key"
-        dict_with_key = {correct_key_name: 123}
+        expected_val = 123
+        dict_with_key = {correct_key_name: expected_val}
 
         # Check it correctly raises
         with assertRaisesRegex(self, KeyError, "The field '" + missing_key_name + "' is required"):
@@ -26,7 +27,19 @@ class ISISPowderCommonTest(unittest.TestCase):
                                                  append_to_error_message=appended_e_msg)
 
         # Check that it correctly returns the key value where it exists
-        self.assertEqual(common.cal_map_dictionary_key_helper(dictionary=dict_with_key, key=correct_key_name), 123)
+        self.assertEqual(common.cal_map_dictionary_key_helper(dictionary=dict_with_key, key=correct_key_name),
+                         expected_val)
+
+        # Check it is not case sensitive
+        different_case_name = "tEsT_key"
+        dict_with_mixed_key = {different_case_name: expected_val}
+
+        try:
+            self.assertEqual(common.cal_map_dictionary_key_helper(dictionary=dict_with_mixed_key,
+                                                                  key=different_case_name.lower()), expected_val)
+        except KeyError:
+            # It tried to use the key without accounting for the case difference
+            self.fail("cal_map_dictionary_key_helper attempted to use a key without accounting for case")
 
     def test_crop_banks_using_crop_list(self):
         bank_list = []
@@ -123,6 +136,28 @@ class ISISPowderCommonTest(unittest.TestCase):
 
         self.assertEqual(common.dictionary_key_helper(dictionary=test_dictionary, key=good_key_name), 123)
 
+    def test_dictionary_key_helper_handles_mixed_case(self):
+        mixed_case_name = "tEsT_KeY"
+        lower_case_name = mixed_case_name.lower()
+        expected_val = 456
+
+        mixed_case_dict = {mixed_case_name: expected_val}
+
+        # Check by default it doesn't try to account for key
+        with self.assertRaises(KeyError):
+            common.dictionary_key_helper(dictionary=mixed_case_dict, key=lower_case_name)
+
+        # Next check if we have the flag set to False it still throws
+        with self.assertRaises(KeyError):
+            common.dictionary_key_helper(dictionary=mixed_case_dict, key=lower_case_name, case_insensitive=False)
+
+        # Check we actually get the key when we do ask for case insensitive checks
+        try:
+            val = common.dictionary_key_helper(dictionary=mixed_case_dict, key=lower_case_name, case_insensitive=True)
+            self.assertEqual(val, expected_val)
+        except KeyError:
+            self.fail("dictionary_key_helper did not perform case insensitive lookup")
+
     def test_extract_ws_spectra(self):
         number_of_expected_banks = 5
         ws_to_split = mantid.CreateSampleWorkspace(XMin=0, XMax=1, BankPixelWidth=1,
@@ -166,6 +201,36 @@ class ISISPowderCommonTest(unittest.TestCase):
         expected_values = [30, 31, 32, 33, 36, 38, 39]
         returned_values = common.generate_run_numbers(run_number_string=input_string)
         self.assertEqual(expected_values, returned_values)
+
+    def test_generate_spline_vanadium_name(self):
+        reference_vanadium_name = "foo_123"
+        sample_arg_one = "arg1"
+        sample_arg_two = 987
+
+        # Check that it correctly processes unnamed args
+        output = common.generate_splined_name(reference_vanadium_name, sample_arg_one, sample_arg_two)
+        expected_output = "VanSplined_" + reference_vanadium_name + '_' + sample_arg_one + '_' + str(sample_arg_two)
+        expected_output += '.nxs'
+        self.assertEqual(expected_output, output)
+
+        # Check it can handle lists to append
+        sample_arg_list = ["bar", "baz", 567]
+
+        expected_output = "VanSplined_" + reference_vanadium_name
+        for arg in sample_arg_list:
+            expected_output += '_' + str(arg)
+        expected_output += '.nxs'
+        output = common.generate_splined_name(reference_vanadium_name, sample_arg_list)
+        self.assertEqual(expected_output, output)
+
+        # Check is can handle mixed inputs
+        expected_output = "VanSplined_" + reference_vanadium_name + '_' + sample_arg_one
+        for arg in sample_arg_list:
+            expected_output += '_' + str(arg)
+        expected_output += '_' + str(sample_arg_two) + '.nxs'
+
+        output = common.generate_splined_name(reference_vanadium_name, sample_arg_one, sample_arg_list, sample_arg_two)
+        self.assertEqual(expected_output, output)
 
     def test_generate_run_numbers_fails(self):
         run_input_sting = "text-string"
@@ -220,6 +285,31 @@ class ISISPowderCommonTest(unittest.TestCase):
         common.run_normalise_by_current(ws)
         self.assertAlmostEqual(expected_value, ws.dataY(0)[0], delta=1e-8)
 
+    def test_subtract_summed_runs(self):
+        # Load a vanadium workspace for this test
+        sample_empty_number = "100"
+        ws_file_name = "POL" + sample_empty_number
+        original_ws = mantid.Load(ws_file_name)
+        no_scale_ws = mantid.CloneWorkspace(InputWorkspace=original_ws, OutputWorkspace="test_subtract_sample_empty_ws")
+
+        # Subtracting from self should equal 0
+        returned_ws = common.subtract_summed_runs(ws_to_correct=no_scale_ws, instrument=MockInstrument(),
+                                                  empty_sample_ws_string=sample_empty_number)
+        y_values = returned_ws.readY(0)
+        for i in range(0, returned_ws.blocksize()):
+            self.assertAlmostEqual(y_values[i], 0)
+
+        # Check what happens when we specify scale as a half
+        scaled_ws = common.subtract_summed_runs(ws_to_correct=original_ws, instrument=MockInstrument(),
+                                                scale_factor=0.75, empty_sample_ws_string=sample_empty_number)
+        scaled_y_values = scaled_ws.readY(0)
+        self.assertAlmostEqual(scaled_y_values[2], 0.20257424)
+        self.assertAlmostEqual(scaled_y_values[4], 0.31700152)
+        self.assertAlmostEqual(scaled_y_values[7], 0.35193970)
+
+        mantid.DeleteWorkspace(returned_ws)
+        mantid.DeleteWorkspace(scaled_ws)
+
     def test_spline_workspaces(self):
         ws_list = []
         for i in range(1, 4):
@@ -236,6 +326,18 @@ class ISISPowderCommonTest(unittest.TestCase):
         for input_ws, splined_ws in zip(ws_list, splined_list):
             mantid.DeleteWorkspace(input_ws)
             mantid.DeleteWorkspace(splined_ws)
+
+
+class MockInstrument(object):
+    def _get_run_details(self, run_number_string):
+        return None
+
+    @staticmethod
+    def _generate_input_file_name(run_number):
+        return "POL" + str(run_number)
+
+    def _normalise_ws_current(self, ws_to_correct, run_details=None):
+        return ws_to_correct
 
 if __name__ == "__main__":
     unittest.main()
