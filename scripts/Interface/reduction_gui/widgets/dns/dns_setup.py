@@ -1,6 +1,6 @@
 from PyQt4.QtGui import QLineEdit, QPushButton, QTableView, QHeaderView, QCheckBox, QDoubleSpinBox, QRadioButton, \
     QLayout, QWidget, QSpacerItem, QHBoxLayout, QVBoxLayout, QLabel, QFrame, QGroupBox, QGridLayout, QButtonGroup, \
-    QSizePolicy
+    QSizePolicy, QMessageBox
 from PyQt4.QtCore import QAbstractTableModel, pyqtSignal, QModelIndex, Qt
 
 from reduction_gui.widgets.base_widget import BaseWidget
@@ -126,6 +126,16 @@ class DNSSetupWidget(BaseWidget):
             while self._get_row_numbers() < numRows:
                 self.tableData.append(('', ''))
 
+        def _has_no_min_angle(self, row):
+            if not self._is_row_empty(row):
+                (minAngle, maxAngle) = self.tableData[row]
+                return not minAngle
+
+        def _has_no_max_angle(self, row):
+            if not self._is_row_empty(row):
+                (minAngle, maxAngle) = self.tableData[row]
+                return not maxAngle
+
         def _set_cell(self, row, col, text):
 
             self._set_num_rows(row + 1)
@@ -145,6 +155,18 @@ class DNSSetupWidget(BaseWidget):
 
         headers = ('Min Angle[\305]', 'Max Angle[\305]')
         selectCell = pyqtSignal(int, int)
+
+        def row_no_min_angle(self):
+            for i in range(len(self.tableData)):
+                if self._has_no_min_angle(i):
+                    return i
+            return None
+
+        def row_no_max_angle(self):
+            for i in range(len(self.tableData)):
+                if self._has_no_max_angle(i):
+                    return i
+            return None
 
         def rowCount(self, _=QModelIndex()):
             return self._get_row_numbers() + 1
@@ -313,8 +335,11 @@ class DNSSetupWidget(BaseWidget):
         self.latticeB = tip(QDoubleSpinBox(), self.TIP_latticeB)
         self.latticeC = tip(QDoubleSpinBox(), self.TIP_latticeC)
         self.latticeAlpha = tip(QDoubleSpinBox(), self.TIP_latticeAlpha)
+        self.latticeAlpha.setMinimumWidth(75)
         self.latticeBeta = tip(QDoubleSpinBox(), self.TIP_latticeBeta)
+        self.latticeBeta.setMinimumWidth(75)
         self.latticeGamma = tip(QDoubleSpinBox(), self.TIP_latticeGamma)
+        self.latticeGamma.setMinimumWidth(75)
         self.scatterU1 = tip(QDoubleSpinBox(), self.TIP_scatterU1)
         self.scatterU2 = tip(QDoubleSpinBox(), self.TIP_scatterU2)
         self.scatterU3 = tip(QDoubleSpinBox(), self.TIP_scatterU3)
@@ -729,6 +754,16 @@ class DNSSetupWidget(BaseWidget):
     def set_state(self, dnsScriptElement):
 
         elem = dnsScriptElement
+
+        if self.maskAngleModel.row_no_min_angle():
+            message = "No min Angle in row: " + str(self.maskAngleModel.row_no_min_angle())
+            message += " , using default: 0.0"
+            QMessageBox.warning(self, "Warning", message)
+
+        if self.maskAngleModel.row_no_max_angle():
+            message = "No max Angle in row: " + str(self.maskAngleModel.row_no_max_angle())
+            message += " , using default: 180.0"
+            QMessageBox.warning(self, "Warining", message)
 
         self.sampleDataPath.setText(elem.sampleDataPath)
         self.sampleFilePre.setText(elem.filePrefix)

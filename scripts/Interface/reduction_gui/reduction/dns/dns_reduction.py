@@ -3,6 +3,10 @@ import xml.dom.minidom
 from collections import OrderedDict
 import os
 import re
+import numpy as np
+
+from mantid.kernel import *
+from mantid.api import *
 
 from reduction_gui.reduction.scripter import BaseScriptElement, BaseReductionScripter
 import mantid.simpleapi as api
@@ -244,6 +248,7 @@ class DNSScriptElement(BaseScriptElement):
             self.scatterV2 = get_flt('scattering_Plane_v_2', self.DEF_ScatterV2)
             self.scatterV3 = get_flt('scattering_Plane_v_3', self.DEF_ScatterV3)
 
+
     def to_script(self):
 
         def error(message):
@@ -258,6 +263,7 @@ class DNSScriptElement(BaseScriptElement):
 
         def _search_files(path, prefix, suffix, dataRun):
             fs = []
+            found = False
             for runs in dataRun:
                 (runNums, outWs, comment) = runs
                 numbers = runNums.split(',')
@@ -267,20 +273,63 @@ class DNSScriptElement(BaseScriptElement):
                         first = int(first)
                         last = int(last)
                         for i in range(first, last + 1):
-                            files = [f for f in os.listdir(path) if
-                                     re.match(r"{}0*{}{}.d_dat".format(prefix, int(i), suffix), f)]
-                            fs.append(files)
-                            if not files:
+                            for f in os.listdir(path):
+                                if re.match(r"{}0*{}{}.d_dat".format(prefix, int(i), suffix), f):
+                                    found = True
+                                    fs.append(str(f))
+                            #fis = [f for f in os.listdir(path) if
+                            #         re.match(r"{}0*{}{}.d_dat".format(prefix, int(i), suffix), f)]
+                            #fs.append(fis)
+                            #if not fis:
+                            if not found:
                                 error('file with prefix ' + prefix + ', run number '
                                       + str(i) + ' and suffix ' + suffix + ' not found')
+                            found = False
                     else:
-                        files = [f for f in os.listdir(path) if
-                                 re.match(r"{}0*{}{}.d_dat".format(prefix, int(number), suffix), f)]
-                        fs.append(files)
-                        if not files:
+                        for f in os.listdir(path):
+                            if re.match(r"{}0*{}{}.d_dat".format(prefix, int(number), suffix), f):
+                                found = True
+                                fs.append(str(f))
+                        #fis = [f for f in os.listdir(path) if
+                        #         re.match(r"{}0*{}{}.d_dat".format(prefix, int(number), suffix), f)]
+                        #fs.append(fis)
+                        #if not fis:
+                        if not found:
                             error('file with prefix ' + prefix + ', run number '
                                   + str(number) + ' and suffix ' + suffix + ' not found')
+                        found = False
             return fs
+
+        def _search_fs(path, prefix, suffix, runnumbers):
+            numbers = runnumbers.split(",")
+            fs = []
+            found = False
+            for runnumber in numbers:
+                if runnumber.__contains__(":"):
+                    (start, stop) = runnumber.split(":")
+                    start = int(start)
+                    stop = int(stop)
+                    for i in range(start, stop+1):
+                        for f in os.listdir(path):
+                            if re.match(r"{}0*{}{}.d_dat".format(prefix, int(i), suffix), f):
+                                found = True
+                                fs.append(str(f))
+                        if not found:
+                            error('file with prefix ' + prefix + ', run number '
+                                  + str(i) + ' and suffix ' + suffix + ' not found')
+                        found = False
+                else:
+                    for f in os.listdir(path):
+                        if re.match(r"{}0*{}{}.d_dat".format(prefix, int(runnumber), suffix), f):
+                            found = True
+                            fs.append(str(f))
+                    if not found:
+                        error('file with prefix ' + prefix + ", run number "
+                              + str(runnumber) + " and suffix " + suffix + " not found")
+                    found = False
+
+            return fs
+
 
         files = None
 
@@ -293,13 +342,36 @@ class DNSScriptElement(BaseScriptElement):
         if not self.fileSuffix:
             error('missing sample data file suffix')
 
+        (first_runs, first_workspace, first_comment) = self.dataRuns[0]
         if not self.dataRuns:
-            error('missing data runs')
-        else:
+            error('Missing sample data runs')
+        elif not first_runs and not first_workspace and not first_comment:
+            error("First line empty")
+
+        for (runs, workspace, comment) in self.dataRuns:
+            if not runs:
+                error("All rows must contain run numbers")
+            elif runs and not workspace:
+                error("There must be a workspace to all run numbers")
+
+        if self.dataRuns:
             files = _search_files(self.sampleDataPath, self.filePrefix, self.fileSuffix, self.dataRuns)
 
         for i in range(len(self.maskAngles)):
             (minA, maxA) = self.maskAngles[i]
+            if not maxA:
+                maxA = 180
+            elif not minA:
+                minA = 0
+
+            if float(minA) < 0.0 or float(minA) > 180.0:
+                errormess = "Angle must be between 0.0 and 180.0 (error in row " + str(i+1) + ' min angle)'
+                error(errormess)
+
+            if float(maxA) < 0.0 or float(maxA) > 180.0:
+                errormess = "Angle must be between 0.0 and 180.0 (error in row " + str(i+1) + ' max angle)'
+                error(errormess)
+
             if not float(minA) < float(maxA):
                 errormess = 'Min Angle must be smaller than max Angle (error in row ' + str(i+1) + ')'
                 error(errormess)
@@ -349,9 +421,15 @@ class DNSScriptElement(BaseScriptElement):
         sampleData['File prefix'] = self.filePrefix
         sampleData['File suffix'] = self.fileSuffix
         runs = OrderedDict()
+        workspaces = []
+        _files = []
+        comments = []
         for i in range(len(self.dataRuns)):
             run = OrderedDict()
             (runNumber, outWs, comment) = self.dataRuns[i]
+            workspaces.append(str(outWs))
+            _files.append(_search_fs(self.sampleDataPath, self.filePrefix, self.fileSuffix, runNumber))
+            comments.append(str(comment))
             run["Run numbers"] = runNumber
             run["Output Workspace"] = outWs
             run["Comment"] = comment
@@ -471,7 +549,72 @@ class DNSScriptElement(BaseScriptElement):
             script[0] += line + '\n'
 
         l("import numpy as np")
+        l("import os")
+        l("def is_in_list(angle_list, angle, tolerance):")
+        l("    for a in angle_list:")
+        l("        if np.fabs(a - angle) < tolerance:")
+        l("            return True")
+        l("    return False")
         l()
+        l("config['default.facility'] = '{}'".format(self.facility_name))
+        l("config['default.instrument'] = '{}'".format(self.instrument_name))
+        l()
+        l("datapath = '{}'".format(parameters['Sample Data']['Data path']))
+        l("prefix = '{}'".format(parameters['Sample Data']['File prefix']))
+        l("suffix = '{}'".format(parameters['Sample Data']['File suffix']))
+        l("files = {}".format(_files))
+        l("workspaces = {}".format(workspaces))
+        l("comments = {}".format(comments))
+        l()
+        l("norm = '{}'".format(parameters['Data reduction settings']['Normalization']))
+        l("stdpath = '{}'".format(parameters['Standard Data']['Path']))
+        l("datafiles = {}".format(parameters['Sample Data']['Data Table']['files']))
+        l("logger.debug(str({}))".format(str(parameters['Sample Data']['Data Table']['files'])))
+        l()
+        l("dataworkspaces = []")
+        l("for i in range(len(workspaces)):")
+        l("    wgroupname = 'first_' + workspaces[i] + '_group'")
+        l("    wgroup = []")
+        l("    print str(workspaces[i])")
+        l("    print str(files[i])")
+        l("    print str(comments[i])")
+        l("    for f in files[i]:")
+        l("        s = f")
+        l("        wname = workspaces[i] + '_' + s.split('.')[0]")
+        l("        print wname")
+        l("        filepath = os.path.join(datapath, f)")
+        l("        print filepath")
+        l("        LoadDNSLegacy(Filename=filepath, OutputWorkspace=wname, Normalization ='no')")
+        l("        wgroup.append(wname)")
+        l("        dataworkspaces.append(wname)")
+        l("    print wgroupname")
+        l("    GroupWorkspaces(wgroup, OutputWorkspace=wgroupname)")
+        l("allcalibrationworkspaces = []")
+        l("for f in os.listdir(stdpath):")
+        l("    fullfilename = os.path.join(stdpath, f)")
+        l("    if os.path.isfile(fullfilename):")
+        l("        wname = os.path.splitext(f)[0]")
+        l("        print wname")
+        l("        if not mtd.doesExist(wname):")
+        l("             LoadDNSLegacy(Filename=fullfilename, OutputWorkspace=wname, Normalization='no')")
+        l("        allcalibrationworkspaces.append(wname)")
+        l("refws = mtd[dataworkspaces[0]]")
+        l("coil_currents = 'C_a,C_b,C_c,C_z'")
+        l("calibrationworkspaces = []")
+        l("for wsname in allcalibrationworkspaces:")
+        l("    result = CompareSampleLogs([refws.getName(), wsname], coil_currents, 0.01)")
+        l("    if result:")
+        l("        DeleteWorkspace(wsname)")
+        l("    else:")
+        l("        calibrationworkspaces.append(wsname)")
+        l("GroupWorkspaces(calibrationworkspaces, OutputWorkspace='first_csl_workspaces')")
+        l("print allcalibrationworkspaces")
+        l("deterota = []")
+        l("for wsname in dataworkspaces:")
+        l("    angle = mtd[wsname].getRun().getProperty('deterota').value")
+        l("    if not is_in_list(deterota, angle, tol):")
+
+        print(str(script[0]))
 
         return script[0]
 
