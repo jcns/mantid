@@ -261,45 +261,6 @@ class DNSScriptElement(BaseScriptElement):
                     return True
             return False
 
-        def _search_files(path, prefix, suffix, dataRun):
-            fs = []
-            found = False
-            for runs in dataRun:
-                (runNums, outWs, comment) = runs
-                numbers = runNums.split(',')
-                for number in numbers:
-                    if number.__contains__(':'):
-                        (first, last) = number.split(':')
-                        first = int(first)
-                        last = int(last)
-                        for i in range(first, last + 1):
-                            for f in os.listdir(path):
-                                if re.match(r"{}0*{}{}.d_dat".format(prefix, int(i), suffix), f):
-                                    found = True
-                                    fs.append(str(f))
-                            #fis = [f for f in os.listdir(path) if
-                            #         re.match(r"{}0*{}{}.d_dat".format(prefix, int(i), suffix), f)]
-                            #fs.append(fis)
-                            #if not fis:
-                            if not found:
-                                error('file with prefix ' + prefix + ', run number '
-                                      + str(i) + ' and suffix ' + suffix + ' not found')
-                            found = False
-                    else:
-                        for f in os.listdir(path):
-                            if re.match(r"{}0*{}{}.d_dat".format(prefix, int(number), suffix), f):
-                                found = True
-                                fs.append(str(f))
-                        #fis = [f for f in os.listdir(path) if
-                        #         re.match(r"{}0*{}{}.d_dat".format(prefix, int(number), suffix), f)]
-                        #fs.append(fis)
-                        #if not fis:
-                        if not found:
-                            error('file with prefix ' + prefix + ', run number '
-                                  + str(number) + ' and suffix ' + suffix + ' not found')
-                        found = False
-            return fs
-
         def _search_fs(path, prefix, suffix, runnumbers):
             numbers = runnumbers.split(",")
             fs = []
@@ -330,9 +291,6 @@ class DNSScriptElement(BaseScriptElement):
 
             return fs
 
-
-        files = None
-
         if not os.path.lexists(self.sampleDataPath):
             error('sample data path not found')
 
@@ -353,9 +311,6 @@ class DNSScriptElement(BaseScriptElement):
                 error("All rows must contain run numbers")
             elif runs and not workspace:
                 error("There must be a workspace to all run numbers")
-
-        if self.dataRuns:
-            files = _search_files(self.sampleDataPath, self.filePrefix, self.fileSuffix, self.dataRuns)
 
         for i in range(len(self.maskAngles)):
             (minA, maxA) = self.maskAngles[i]
@@ -436,8 +391,6 @@ class DNSScriptElement(BaseScriptElement):
             string = "Runs in row: " + str(i)
             runs[string] = run
 
-        if files:
-            runs['files'] = _files
         sampleData['Data Table'] = runs
 
         parameters['Sample Data'] = sampleData
@@ -492,17 +445,17 @@ class DNSScriptElement(BaseScriptElement):
 
         if self.out == self.OUT_POLY_AMOR:
             type['Type'] = 'Polycrystal/Amorphous'
-            outAx = ''
+            outAx = []
             if self.outAxisQ:
-                outAx += 'q, '
+                outAx.append('|Q|')
 
             if self.outAxisD:
-                outAx += 'd, '
+                outAx.append('d-Spacing')
 
             if self.outAxis2Theta:
-                outAx += '2Theta'
+                outAx.append('2theta')
 
-            type['Abscissa'] = outAx
+            type['Abscissa'] = str(outAx)
             if self.separation == self.SEP_XYZ:
                 type['Separation'] = 'XYZ'
             elif self.separation == self.SEP_COH:
@@ -550,6 +503,7 @@ class DNSScriptElement(BaseScriptElement):
 
         l("import numpy as np")
         l("import os")
+        l()
         l("def is_in_list(angle_list, angle, tolerance):")
         l("    for a in angle_list:")
         l("        if np.fabs(a - angle) < tolerance:")
@@ -557,23 +511,29 @@ class DNSScriptElement(BaseScriptElement):
         l("    return False")
         l()
         l("def extract_norm_workspace(wsgroup):")
-        l("    norm_dict = {'duration': 'duration', 'monitor': 'mon_sum'}")
+        l("    norm_dict = {'time': 'duration', 'monitor': 'mon_sum'}")
         l("    normlist = []")
-        l("    for i in range(wsgroupt.getNumberOfEntries()):")
+        l("    for i in range(wsgroup.getNumberOfEntries()):")
         l("        ws = wsgroup.getItem(i)")
         l("        normws = CloneWorkspace(ws, OutputWorkspace= ws.getName() + '_norm')")
-        l("        val = ws.getRun().getProperty()(norm_dict[norm]).value")
-        l("        for i in range(len(nor")
+        l("        val = ws.getRun().getProperty(norm_dict[norm]).value")
+        l("        for i in range(len(normws.extractY())):")
+        l("            normws.setY(i, np.array([val]))")
+        l("            normws.setE(i, np.array([0.0]))")
+        l("        normlist.append(normws.getName())")
+        l("    GroupWorkspaces(normlist, OutputWorkspace=wsgroup.getName() + '_norm')")
         l()
-        l("def merge_and_normalize(wsgroup):")
-        l("    data_merged = DNSMergeRuns(wsgroup, xax, OutputWorkspace=wsgroup + '_m0')")
-        l("    norm_merged = DNSMergeRuns(wsgroup + '_norm', xax, wsgroup + '_norm_m')")
-        l("    try:")
-        l("        Divide(data_merged, norm_merged, OutputWorkspace=wsgroup + '_m')")
-        l("    except:")
-        l("        dataX = data_merged.extractX()")
-        l("        norm_merged.setX(0, dataX[0])")
-        l("        Divide(data_merged, norm_merged, OutputWorkspace=wsgroup+'_m')")
+        l("def merge_and_normalize(wsgroup, namex = ''):")
+        l("    for x in xax:")
+        l("        print 'merge and normailze'")
+        l("        data_merged = DNSMergeRuns(wsgroup + namex, x, OutputWorkspace=wsgroup + '_m0' + '_' + x)")
+        l("        norm_merged = DNSMergeRuns(wsgroup + '_norm' + namex, x, OutputWorkspace=wsgroup + '_norm_m' + '_' + x)")
+        l("        try:")
+        l("            Divide(data_merged, norm_merged, OutputWorkspace=wsgroup + '_m' + '_' + x)")
+        l("        except:")
+        l("            dataX = data_merged.extractX()")
+        l("            norm_merged.setX(0, dataX[0])")
+        l("            Divide(data_merged, norm_merged, OutputWorkspace=wsgroup+'_m'+ '_' + x)")
         l()
         l("config['default.facility'] = '{}'".format(self.facility_name))
         l("config['default.instrument'] = '{}'".format(self.instrument_name))
@@ -586,12 +546,11 @@ class DNSScriptElement(BaseScriptElement):
         l("files = {}".format(_files))
         l("workspaces = {}".format(workspaces))
         l("comments = {}".format(comments))
-        l("xax = 'q'")
+        l("xax = {}".format(parameters['Sample']['Abscissa']))
+        l("flipper_bool = {}".format(parameters['Data reduction settings']['Flipping ratio correction']))
         l()
         l("norm = '{}'".format(parameters['Data reduction settings']['Normalization']))
         l("stdpath = '{}'".format(parameters['Standard Data']['Path']))
-        l("datafiles = {}".format(parameters['Sample Data']['Data Table']['files']))
-        l("logger.debug(str({}))".format(str(parameters['Sample Data']['Data Table']['files'])))
         l()
         l("for run_table in range(len(workspaces)):")
         l("    logger.debug(str(workspaces[run_table]))")
@@ -602,6 +561,8 @@ class DNSScriptElement(BaseScriptElement):
         l("    print ('files = ' + str(files_run))")
         l("    comment = comments[run_table]")
         l("    print ('comment = ' + str(comment))")
+        l()
+        l("    # 1. Load Sample Data")
         l("    for f in files_run:")
         l("        wname = os.path.splitext(f)[0]")
         l("        print wname")
@@ -632,16 +593,20 @@ class DNSScriptElement(BaseScriptElement):
         l("    print(str(refws))")
         l("    print allcalibrationworkspaces")
         l("    print (str(calibrationworkspaces))")
-        l("    GroupWorkspaces(calibrationworkspaces, OutputWorkspace='run'+ str(run_table+1) + '_' + 'first_csl_workspaces')")
+        l("    GroupWorkspaces(calibrationworkspaces,"
+          " OutputWorkspace='run'+ str(run_table+1) + '_' + 'first_csl_workspaces')")
         l("    deterota = []")
         l("    for wsname in dataworkspaces:")
         l("        angle = mtd[wsname].getRun().getProperty('deterota').value")
         l("        if not is_in_list(deterota, angle, tol):")
         l("            deterota.append(angle)")
         l("    logger.information('Detector rotation angles: ' + str(deterota))")
-        l("    sfrawdata = dict.fromkeys(deterota)")
-        l("    logger.debug(str(sfrawdata))")
-        l("    nsfrawdata = dict.fromkeys(deterota)")
+        l("    sfrawdatax = dict.fromkeys(deterota)")
+        l("    sfrawdatay = dict.fromkeys(deterota)")
+        l("    sfrawdataz = dict.fromkeys(deterota)")
+        l("    nsfrawdatax = dict.fromkeys(deterota)")
+        l("    nsfrawdatay = dict.fromkeys(deterota)")
+        l("    nsfrawdataz = dict.fromkeys(deterota)")
         l("    sfrawvana = dict.fromkeys(deterota)")
         l("    nsfrawvana = dict.fromkeys(deterota)")
         l("    sfrawnicr = dict.fromkeys(deterota)")
@@ -652,13 +617,31 @@ class DNSScriptElement(BaseScriptElement):
         l("        run = mtd[wsname].getRun()")
         l("        angle = run.getProperty('deterota').value")
         l("        flipper = run.getProperty('flipper').value")
+        l("        polarisation = run.getProperty('polarisation').value")
+        l("        print str(angle)")
+        l("        print flipper")
+        l("        print polarisation")
         l("        print(str(wsname))")
         l("        if flipper == 'ON':")
-        l("            sfrawdata[angle] = wsname")
-        l("            print('sfrawdata' + str(angle) + wsname)")
+        l("            if polarisation == 'x' :")
+        l("                sfrawdatax[angle] = wsname")
+        l("            elif polarisation == 'y':")
+        l("                sfrawdatay[angle] = wsname")
+        l("            elif polarisation == 'z':")
+        l("                sfrawdataz[angle] = wsname")
         l("        else:")
-        l("            nsfrawdata[angle] = wsname")
-        l("            print('nsfrawdata' + str(angle) + wsname)")
+        l("            if polarisation == 'x' :")
+        l("                nsfrawdatax[angle] = wsname")
+        l("            elif polarisation == 'y':")
+        l("                nsfrawdatay[angle] = wsname")
+        l("            elif polarisation == 'z':")
+        l("                nsfrawdataz[angle] = wsname")
+        l("    print sfrawdatax")
+        l("    print sfrawdatay")
+        l("    print sfrawdataz")
+        l("    print nsfrawdatax")
+        l("    print nsfrawdatay")
+        l("    print nsfrawdataz")
         l("    for wsname in calibrationworkspaces:")
         l("        print('wsname = ' + str(wsname))")
         l("        run = mtd[wsname].getRun()")
@@ -684,16 +667,21 @@ class DNSScriptElement(BaseScriptElement):
         l("            else:")
         l("               nsfleer[angle] = wsname")
         l()
-        l("    logger.debug(str(sfrawdata) +'\\n' +  str(nsfrawdata) + '\\n' +str(sfrawvana))")
+        l("    logger.debug(str(sfrawdatax) +'\\n' + str(sfrawdatay) +'\\n' + str(sfrawdataz))")
+        l("    logger.debug(str(nsfrawdatax) + '\\n' + str(nsfrawdatay) + '\\n' +str(nsfrawdataz) + '\\n'+str(sfrawvana))")
         l("    logger.debug(str(nsfrawvana) + '\\n' + str(sfrawnicr) + '\\n' + str(nsfrawnicr))")
         l("    logger.debug(str(sfleer) + '\\n' + str(nsfleer))")
-        l("    group_names = ['sfrawdata','nsfrawdata','sfrawvana', 'nsfrawvana', 'sfrawnicr', 'nsfrawnicr', "
+        l("    group_names = ['sfrawdatax','sfrawdatay','sfrawdataz','nsfrawdatax','nsfrawdatay',"
+          "'nsfrawdataz','sfrawvana', 'nsfrawvana', 'sfrawnicr', 'nsfrawnicr', "
           "'sfleer', 'nsfleer']")
-        l("    for var in group_names:")
+        l()
+        l("    print group_names")
+        """l("    for var in group_names:")
         l("        ws = eval(var).values()")
         l("        print(str(ws))")
         l("        if None in ws:")
-        l("            msg = 'Group ' + var + 'has no data for some of detector positions. Try to increase 2theta tolerance'")
+        l("            msg = 'Group ' + var + 'has no data for some of detector positions. "
+          "Try to increase 2theta tolerance'")
         l("            logger.error(msg + ' Values: ' + str(eval(var)))")
         l("            raise RuntimeError(msg)")
         l("    print (str(dataworkspaces))")
@@ -704,7 +692,106 @@ class DNSScriptElement(BaseScriptElement):
         l("        print(ws)")
         l("        GroupWorkspaces(ws, OutputWorkspace=gname)")
         l("    print(out_ws)")
-        l("")
+        l("    for var in group_names:")
+        l("        gname = out_ws + '_' + var + '_group'")
+        l("        extract_norm_workspace(mtd[gname])")
+        l("        merge_and_normalize(gname)")
+        l()
+        l("    for var in ['rawdata', 'rawvana', 'rawnicr']:")
+        l("        data_wname_sf = out_ws + '_sf' + var + '_group'")
+        l("        data_wname_nsf = out_ws + '_nsf' + var + '_group'")
+        l("        norm_ratio_sf = Divide(data_wname_sf + '_norm', out_ws + '_sfleer_group_norm', "
+          "OutputWorkspace=out_ws + '_sf' + var + '_nratio')")
+        l("        norm_ratio_nsf = Divide(data_wname_nsf + '_norm', out_ws + '_nsfleer_group_norm',"
+          "OutputWorkspace=out_ws + '_nsf' + var + '_nratio')")
+        l("        sfleer_scaled = Multiply(out_ws + '_sfleer_group', norm_ratio_sf, "
+          "OutputWorkspace=out_ws + '_sfleer_' + var)")
+        l("        print str(data_wname_nsf + '_norm'), str(out_ws + '_nsfleer_group_norm')")
+        l("        nsfleer_scaled = Multiply(out_ws + '_nsfleer_group', norm_ratio_nsf, "
+          "OutputWorkspace=out_ws + '_nsfleer_' + var)")
+        l()
+        l("        Minus(data_wname_sf, sfleer_scaled, OutputWorkspace=out_ws + '_sf' + var[3:] + '_group')")
+        l("        CloneWorkspace(data_wname_sf + '_norm', "
+          "OutputWorkspace=out_ws + '_sf' + var[3:] + '_group_norm')")
+        l("        Minus(data_wname_nsf, nsfleer_scaled, OutputWorkspace=out_ws + '_nsf' + var[3:] + '_group')")
+        l("        CloneWorkspace(data_wname_nsf + '_norm', "
+          "OutputWorkspace=out_ws + '_nsf' + var[3:] + '_group_norm')")
+        l()
+        l("        merge_and_normalize(out_ws + '_sf' + var[3:] + '_group')")
+        l("        merge_and_normalize(out_ws + '_nsf' + var[3:] + '_group')")
+        l()
+        l("    vana_sf_nsf_sum = Plus(out_ws + '_sfvana_group', out_ws + '_nsfvana_group')")
+        l("    vana_sf_nsf_sum_norm = Plus(out_ws + '_sfvana_group_norm', out_ws + '_nsfvana_group_norm')")
+        l()
+        l("    vana_total = SumSpectra(vana_sf_nsf_sum)")
+        l("    vana_total_norm = SumSpectra(vana_sf_nsf_sum_norm)")
+        l()
+        l("    vana_mean = Mean(', '.join(vana_total.getNames()))")
+        l("    vana_mean_norm = Mean(', '.join(vana_total_norm.getNames()))")
+        l("    vana_coefs = vana_sf_nsf_sum/vana_mean")
+        l("    vana_coefs_norm = vana_sf_nsf_sum_norm/vana_mean_norm")
+        l()
+        l("    vana_coefs_total = vana_coefs/vana_coefs_norm")
+        l()
+        l("    for x in xax:")
+        l("        sfdata_norm = Multiply(out_ws + '_sfdata_group_norm', vana_coefs_total, "
+          "OutputWorkspace=out_ws + '_sfdata_vcorr_norm' + '_' + x)")
+        l("        nsfdata_norm = Multiply(out_ws + '_nsfdata_group_norm', vana_coefs_total, "
+          "OutputWorkspace=out_ws + '_nsfdata_vcorr_norm' + '_' + x)")
+        l("    for x in xax:")
+        l("        print 'sfdata_merged' + x")
+        l("        sfdata_merged = DNSMergeRuns(out_ws + '_sfdata_group', x, "
+          "OutputWorkspace=out_ws + '_sfdata_group_m0' + '_' + x)")
+        l("        print 'nsfdata_merged' + x")
+        l("        nsfdata_merged = DNSMergeRuns(out_ws + '_nsfdata_group', x, "
+          "OutputWorkspace=out_ws + '_nsfdata_group_m0' + '_' + x)")
+        l("        print 'sfnorm_merged' + x")
+        l("        sfnorm_merged = DNSMergeRuns(out_ws + '_sfdata_vcorr_norm' + '_' + x, x,"
+          "OutputWorkspace=out_ws + '_sfdata_vcorr_norm_m' + '_' + x)")
+        l("        print 'msfnorm_merged' + x")
+        l("        nsfnorm_merged = DNSMergeRuns(out_ws + '_nsfdata_vcorr_norm' + '_' + x, x,"
+          "OutputWorkspace=out_ws + '_nsfdata_vcorr_norm_m' + '_' + x )")
+        l("        Divide(sfdata_merged, sfnorm_merged, OutputWorkspace=out_ws + '_sfdata_vcorr_m' + '_' + x)")
+        l("        Divide(nsfdata_merged, nsfnorm_merged, OutputWorkspace=out_ws + '_nsfdata_vcorr_m' + '_' + x)")
+        l()
+        l("    nicr_nratio = Divide(out_ws + '_nsfnicr_group_norm', out_ws + '_sfnicr_group_norm', "
+          "OutputWorkspace=out_ws + '_nsfnicr_nratio')")
+        l("    nicr_coefs_norm = Multiply(out_ws + '_sfnicr_group', nicr_nratio, "
+          "OutputWorkspace=out_ws + '_sfnicr_scaled')")
+        l("    nicr_coefs = Minus(out_ws + '_nsfnicr_group', nicr_coefs_norm)")
+        l("    nicr_coefs_normalized = nicr_coefs/nicr_coefs_norm")
+        l("    yunit = nicr_coefs.getItem(0).YUnit()")
+        l("    data_nratio = nsfdata_norm/sfdata_norm")
+        l("    sfdata_scaled = Multiply(out_ws + '_sfdata_group', data_nratio, "
+          "OutputWorkspace=out_ws + '_sfdata_group_scaled')")
+        l("    nicr_corr_step1 = Minus(out_ws + '_nsfdata_group', sfdata_scaled)")
+        l("    nicr_corr_step2 = nicr_corr_step1/nicr_coefs_normalized")
+        l("    for i in range(nicr_corr_step2.getNumberOfEntries()):")
+        l("        nicr_corr_step2.getItem(i).setYUnit(yunit)")
+        l("    for x in xax:")
+        l("        nsfdata_fcorr = Plus(out_ws + '_nsfdata_group', nicr_corr_step2, "
+          "OutputWorkspace=out_ws + '_nsfdata_fcorr' + '_' + x)")
+        l("        nsfdata_fcorr_norm = CloneWorkspace(out_ws + '_nsfdata_vcorr_norm' + '_' + x, "
+          "OutputWorkspace = out_ws + '_nsfdata_fcorr_norm' + '_' + x)")
+        l("        sfdata_fcorr = Minus(out_ws + '_sfdata_group', nicr_corr_step2, "
+          "OutputWorkspace=out_ws + '_sfdata_fcorr' + '_' + x)")
+        l("        sfdata_fcorr_norm = CloneWorkspace(out_ws + '_sfdata_vcorr_norm' + '_' + x, "
+          "OutputWorkspace = out_ws + '_sfdata_fcorr_norm' + '_' + x)")
+        l("        merge_and_normalize(out_ws + '_sfdata_fcorr', '_' + x)")
+        l("        merge_and_normalize(out_ws + '_nsfdata_fcorr', '_' + x)")
+        l()
+        l("        spin_incoh = Scale(out_ws + '_sfdata_fcorr_m' + '_' + x, Factor=1.5, Operation='Multiply', "
+          "OutputWorkspace = out_ws + '_spin_incoh' + '_' + x)")
+        l("        step1 = 0.5*sfdata_fcorr*data_nratio")
+        l("        coh_group = nsfdata_fcorr-step1")
+        l("        print 'nuclear_coh_merged'")
+        l("        nuclear_coh_merged = DNSMergeRuns('coh_group', x)")
+        l("        nuclear_coh = Divide(nuclear_coh_merged, out_ws + '_nsfdata_fcorr_norm_m' + '_' + x, "
+          "OutputWorkspace=out_ws + '_nuclear_coherent' + '_' + x)")
+        l("        outws = Divide(nuclear_coh, spin_incoh, OutputWorkspace=out_ws+ '_' + x)")
+        l("        outws = Divide(nuclear_coh, spin_incoh, OutputWorkspace=out_ws+ '_' + x)")
+        """
+
 
 
         print(str(script[0]))
