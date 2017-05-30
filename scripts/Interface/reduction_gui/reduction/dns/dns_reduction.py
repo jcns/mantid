@@ -554,11 +554,22 @@ class DNSScriptElement(BaseScriptElement):
         l("stdpath = '{}'".format(parameters['Standard Data']['Path']))
         l()
         l("logger.debug(str(files))")
-        l("for files_run in files:")
-        l("    files_run_str = ', '.join(files_run)")
+        l("for files_run in range(len(files)):")
+        l("    files_run_str = ', '.join(files[files_run])")
         l("    logger.debug(files_run_str)")
         l("    logger.debug(files_run_str)")
-        l("    DNSLoadData(files_run_str, datapath)")
+        l("    DNSLoadData(FilesList=files_run_str, DataPath=datapath, OutWorkspaceName=workspaces[files_run],"
+          "                OutputTable='SampleDataTable')")
+        l("    sample_table = mtd['SampleDataTable']")
+        l("    DNSLoadData(StandardType='vana', RefWorkspaces=sample_table, DataPath=stdpath, "
+          "                OutWorkspaceName=workspaces[files_run], OutputTable='VanaDataTable')")
+        l("    DNSLoadData(StandardType='nicr', RefWorkspaces=sample_table, DataPath=stdpath, "
+          "                OutWorkspaceName=workspaces[files_run], OutputTable='NicrDataTable')")
+        l("    DNSLoadData(StandardType='leer', RefWorkspaces=sample_table, DataPath=stdpath,"
+          "                OutWorkspaceName=workspaces[files_run], OutputTable='BackgroundDataTable')")
+        l("    DNSProcessStandardData(SampleTable='SampleDataTable', VanaTable='VanaDataTable', "
+          "                           NiCrTable='NicrDataTable', BackgroundTable='BackgroundDataTable', "
+          "                           OutputTable='ProcessedDataTable')")
         """l("for run_table in range(len(workspaces)):")
         l("    logger.debug(str(workspaces[run_table]))")
         l("    dataworkspaces = []")

@@ -1,8 +1,9 @@
 from __future__ import (absolute_import, division, print_function)
 
-from mantid.api import PythonAlgorithm, AlgorithmFactory, mtd
-from mantid.kernel import logger
-from mantid.simpleapi import LoadDNSLegacy
+from mantid.api import PythonAlgorithm, AlgorithmFactory, mtd, PropertyMode
+from mantid.kernel import logger, Direction, StringListValidator
+from mantid.simpleapi import LoadDNSLegacy, GroupWorkspaces, CreateLogPropertyTable, CompareSampleLogs, \
+    DeleteWorkspace
 
 import numpy as np
 
@@ -11,13 +12,19 @@ import os
 class DNSLoadData(PythonAlgorithm):
 
     def category(self):
-        return "Workflow"
+        return "Workflow\\MLZ\\DNS"
 
     def PyInit(self):
 
         self.declareProperty(name='FilesList', defaultValue='',
                              doc='List of files of the Data you want to load')
+        self.declareProperty(name='StandardType', defaultValue='vana',
+                             validator=StringListValidator(['vana', 'nicr', 'leer']), doc = 'Which type of standarddata')
+        self.declareProperty(name='RefWorkspaces', defaultValue='', doc='Referenced Workspace')
         self.declareProperty(name='DataPath', defaultValue='', doc='Path to the files')
+        self.declareProperty(name='OutWorkspaceName', defaultValue='', doc='Name of the output workspace')
+        self.declareProperty(name="OutputTable", defaultValue='',
+                             doc='Name of the output table')
         self.tol = 0.05
 
     def is_in_list(self, angle_list, angle, tolerance):
@@ -26,7 +33,7 @@ class DNSLoadData(PythonAlgorithm):
                  return True
         return False
 
-    def _load_ws(self):
+    def _load_ws_sample(self):
 
         _files = self.getProperty('FilesList').value
         logger.debug(str(_files))
@@ -49,6 +56,47 @@ class DNSLoadData(PythonAlgorithm):
         logger.debug(str(self._deterota))
         self._group_ws(self._data_workspaces, self._deterota)
 
+    def _load_ws_standard(self):
+        std_type = self.getProperty('StandardType').value
+        logger.debug(std_type)
+        allcalibrationworkspaces = []
+        self._data_path = self.getProperty('DataPath').value
+        for f in os.listdir(self._data_path):
+            full_file_name = os.path.join(self._data_path, f)
+            if os.path.isfile(full_file_name) and std_type in full_file_name:
+                wname = os.path.splitext(f)[0]
+                logger.debug(wname)
+                if not mtd.doesExist(wname):
+                    LoadDNSLegacy(Filename=full_file_name, OutputWorkspace=wname, Normalization='no')
+                    allcalibrationworkspaces.append(wname)
+        logger.debug(str(allcalibrationworkspaces))
+        self._ref_ws = mtd[self.getProperty('RefWorkspaces').value]
+        logger.debug(self._ref_ws.getName())
+        coil_currents = 'C_a,C_b,C_c,C_z'
+        sample_ws = [self._ref_ws.cell(i, 0) for i in range(len(self._ref_ws.column(0)))]
+        calibrationworkspaces = []
+        keep = False
+        for wsname in allcalibrationworkspaces:
+            for worksp in sample_ws:
+                result = CompareSampleLogs([worksp, wsname], coil_currents, 0.01)
+                if not result:
+                    keep = True
+            if not keep:
+                DeleteWorkspace(wsname)
+            else:
+                calibrationworkspaces.append(wsname)
+
+        logger.debug("all: "+str(allcalibrationworkspaces))
+        logger.debug("cali: "+str(calibrationworkspaces))
+
+        for wsname in sample_ws:
+            self.deterota = []
+            angle = mtd[wsname].getRun().getProperty('deterota').value
+            if not self.is_in_list(self.deterota, angle, self.tol):
+                self.deterota.append(angle)
+
+        self._group_ws(calibrationworkspaces, self.deterota)
+
     def _group_ws(self, ws, deterota):
         x_sf = dict.fromkeys(deterota)
         x_nsf = dict.fromkeys(deterota)
@@ -64,19 +112,36 @@ class DNSLoadData(PythonAlgorithm):
             logger.debug(str(angle))
             logger.debug(str(flipper))
             logger.debug(str(polarisation))
+            if 'vana' in ws[0] or 'nicr' in ws[0] or 'leer' in ws[0]:
+                for key in deterota:
+                    if np.fabs(angle - key) < self.tol:
+                        angle = key
+            print(wsname)
             if flipper == 'ON':
                 if polarisation == 'x':
+                    if angle in x_sf.keys() and bool(x_sf[angle]):
+                        print("Double angle. list: " + str(x_sf) + " angle: " + str(angle))
                     x_sf[angle] = wsname
                 elif polarisation == 'y':
+                    if angle in y_sf.keys() and bool(y_sf[angle]):
+                        print("Double angle. list: " + str(y_sf) + " angle: " + str(angle))
                     y_sf[angle] = wsname
                 else:
+                    if angle in z_sf.keys() and bool(z_nsf[angle]):
+                        print("Double angle. list: " + str(z_sf) + " angle: " + str(angle))
                     z_sf[angle] = wsname
             else:
                 if polarisation == 'x':
+                    if angle in x_nsf.keys() and bool(x_nsf[angle]):
+                        print("Double angle. list: " + str(x_nsf) + " angle: " + str(angle))
                     x_nsf[angle] = wsname
                 elif polarisation == 'y':
+                    if angle in y_nsf.keys() and bool(y_nsf[angle]):
+                        print("Double angle. list: " + str(y_nsf) + " angle: " + str(angle))
                     y_nsf[angle] = wsname
                 else:
+                    if angle in z_nsf.keys() and bool(z_nsf[angle]):
+                        print("Double angle. list: " + str(z_nsf) + " angle: " + str(angle))
                     z_nsf[angle] = wsname
         logger.debug(str(x_sf))
         logger.debug(str(x_nsf))
@@ -84,10 +149,54 @@ class DNSLoadData(PythonAlgorithm):
         logger.debug(str(y_nsf))
         logger.debug(str(z_sf))
         logger.debug(str(z_nsf))
+        self._out_ws_name = self.getProperty('OutWorkspaceName').value
+        group_names = []
+        if ws:
+            if 'vana' in ws[0]:
+                for pol in ['x', 'y', 'z']:
+                    for flip in ['sf', 'nsf']:
+                        group_names.append(self._out_ws_name + '_rawvana_' + pol + '_' + flip)
+            elif 'nicr' in ws[0]:
+                for pol in ['x', 'y', 'z']:
+                    for flip in ['sf', 'nsf']:
+                        group_names.append(self._out_ws_name + '_rawnicr_' + pol + '_' + flip)
+            elif 'leer' in ws[0]:
+                for pol in ['x', 'y', 'z']:
+                    for flip in ['sf', 'nsf']:
+                        group_names.append(self._out_ws_name + '_leer_' + pol + '_' + flip)
+            else:
+                for pol in ['x', 'y', 'z']:
+                    for flip in ['sf', 'nsf']:
+                        group_names.append(self._out_ws_name + '_rawdata_' + pol + '_' + flip)
+
+            logger.debug(str(group_names))
+            self._use_ws = []
+            for var in group_names:
+                gname = var + '_group'
+                logger.debug(gname)
+                ws_n = var[-5:]
+                if ws_n[0] == '_':
+                    ws_n = ws_n[1:]
+                logger.debug(ws_n)
+                wsp = eval(ws_n).values()
+                logger.debug(str(wsp))
+                if not None in wsp:
+                    GroupWorkspaces(wsp, OutputWorkspace=gname)
+                    self._use_ws.append(gname)
+        else:
+            self._use_ws = []
 
     def PyExec(self):
 
-        self._load_ws()
+        if self.getProperty('FilesList').value:
+            self._load_ws_sample()
+        else:
+            self._load_ws_standard()
+        logs = ['run_title', 'polarisation', 'flipper', 'deterota']
+        table_name = self.getProperty('OutputTable').value
+        if self._use_ws:
+            CreateLogPropertyTable(self._use_ws, OutputWorkspace=table_name, LogPropertyNames=logs, GroupPolicy='All')
+        #self.setProperty('OutputTable', table_name)
 
 
 AlgorithmFactory.subscribe(DNSLoadData)
