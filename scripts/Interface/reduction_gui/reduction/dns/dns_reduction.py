@@ -560,16 +560,22 @@ class DNSScriptElement(BaseScriptElement):
         l("    logger.debug(files_run_str)")
         l("    DNSLoadData(FilesList=files_run_str, DataPath=datapath, OutWorkspaceName=workspaces[files_run],"
           "                OutputTable='SampleDataTable')")
-        l("    sample_table = mtd['SampleDataTable']")
+        l("    sample_table = mtd[workspaces[files_run]+'_SampleDataTable']")
         l("    DNSLoadData(StandardType='vana', RefWorkspaces=sample_table, DataPath=stdpath, "
           "                OutWorkspaceName=workspaces[files_run], OutputTable='VanaDataTable')")
         l("    DNSLoadData(StandardType='nicr', RefWorkspaces=sample_table, DataPath=stdpath, "
           "                OutWorkspaceName=workspaces[files_run], OutputTable='NicrDataTable')")
         l("    DNSLoadData(StandardType='leer', RefWorkspaces=sample_table, DataPath=stdpath,"
           "                OutWorkspaceName=workspaces[files_run], OutputTable='BackgroundDataTable')")
-        l("    DNSProcessStandardData(SampleTable='SampleDataTable', VanaTable='VanaDataTable', "
-          "                           NiCrTable='NicrDataTable', BackgroundTable='BackgroundDataTable', "
-          "                           OutputTable='ProcessedDataTable')")
+        l("    DNSProcessStandardData(SampleTable=workspaces[files_run]+'_SampleDataTable', "
+          "                           VanaTable=workspaces[files_run]+'_VanaDataTable', "
+          "                           NiCrTable=workspaces[files_run]+'_NicrDataTable', "
+          "                           BackgroundTable=workspaces[files_run]+'_BackgroundDataTable', "
+          "                           OutputTable='ProcessedDataTable', OutWorkspaceName=workspaces[files_run])")
+        l("    DNSProcessVanadium(VanadiumTable=workspaces[files_run]+'_VanaDataTable',"
+          "                       BackgroundTable=workspaces[files_run]+'_BackgroundDataTable',"
+          "                       SampleTable=workspaces[files_run]+'_SampleDataTable', "
+          "                       OutWorkspaceName = workspaces[files_run])")
         """l("for run_table in range(len(workspaces)):")
         l("    logger.debug(str(workspaces[run_table]))")
         l("    dataworkspaces = []")

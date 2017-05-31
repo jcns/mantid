@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function)
 from mantid.api import PythonAlgorithm, AlgorithmFactory, mtd, PropertyMode
 from mantid.kernel import logger, Direction, StringListValidator
 from mantid.simpleapi import LoadDNSLegacy, GroupWorkspaces, CreateLogPropertyTable, CompareSampleLogs, \
-    DeleteWorkspace
+    DeleteWorkspace, Plus, RenameWorkspace
 
 import numpy as np
 
@@ -68,6 +68,7 @@ class DNSLoadData(PythonAlgorithm):
                 logger.debug(wname)
                 if not mtd.doesExist(wname):
                     LoadDNSLegacy(Filename=full_file_name, OutputWorkspace=wname, Normalization='no')
+                if not wname in allcalibrationworkspaces:
                     allcalibrationworkspaces.append(wname)
         logger.debug(str(allcalibrationworkspaces))
         self._ref_ws = mtd[self.getProperty('RefWorkspaces').value]
@@ -97,6 +98,19 @@ class DNSLoadData(PythonAlgorithm):
 
         self._group_ws(calibrationworkspaces, self.deterota)
 
+    def _sum_same(self, ws_list, group_list, angle, ws_name):
+        old_ws = group_list[angle]
+        new_ws = Plus(old_ws, ws_name)
+        new_name = old_ws + '_' + ws_name
+        RenameWorkspace(new_ws, new_name)
+        new_ws.setTitle(new_name)
+        group_list[angle] = new_name
+        loc = ws_list.index(ws_name)
+        ws_list[loc] = new_name
+        DeleteWorkspace(old_ws)
+        DeleteWorkspace(ws_name)
+
+
     def _group_ws(self, ws, deterota):
         x_sf = dict.fromkeys(deterota)
         x_nsf = dict.fromkeys(deterota)
@@ -119,30 +133,48 @@ class DNSLoadData(PythonAlgorithm):
             print(wsname)
             if flipper == 'ON':
                 if polarisation == 'x':
+                    print('in flip = on and x (x_sf)')
                     if angle in x_sf.keys() and bool(x_sf[angle]):
+                        self._sum_same(ws, x_sf, angle, wsname)
                         print("Double angle. list: " + str(x_sf) + " angle: " + str(angle))
-                    x_sf[angle] = wsname
+                    else:
+                        x_sf[angle] = wsname
                 elif polarisation == 'y':
+                    print('in flip = on and y (y_sf)')
                     if angle in y_sf.keys() and bool(y_sf[angle]):
                         print("Double angle. list: " + str(y_sf) + " angle: " + str(angle))
-                    y_sf[angle] = wsname
+                        self._sum_same(ws, y_sf, angle, wsname)
+                    else:
+                        y_sf[angle] = wsname
                 else:
-                    if angle in z_sf.keys() and bool(z_nsf[angle]):
+                    print('in flip = on and z (z_sf)')
+                    if angle in z_sf.keys() and bool(z_sf[angle]):
                         print("Double angle. list: " + str(z_sf) + " angle: " + str(angle))
-                    z_sf[angle] = wsname
+                        self._sum_same(ws, z_sf, angle, wsname)
+                    else:
+                        z_sf[angle] = wsname
             else:
                 if polarisation == 'x':
+                    print("in flip = off an x (x_nsf)")
                     if angle in x_nsf.keys() and bool(x_nsf[angle]):
-                        print("Double angle. list: " + str(x_nsf) + " angle: " + str(angle))
-                    x_nsf[angle] = wsname
+                        print("Double angle. List: " + str(x_nsf) + " angle: " + str(angle) + " old ws " + str(x_nsf[angle]))
+                        self._sum_same(ws, x_nsf, angle, wsname)
+                    else:
+                        x_nsf[angle] = wsname
                 elif polarisation == 'y':
+                    print("in flip = off and y (y_nsf)")
                     if angle in y_nsf.keys() and bool(y_nsf[angle]):
                         print("Double angle. list: " + str(y_nsf) + " angle: " + str(angle))
-                    y_nsf[angle] = wsname
+                        self._sum_same(ws, y_nsf, angle, wsname)
+                    else:
+                        y_nsf[angle] = wsname
                 else:
+                    print("in flip = off and z (z_nsf)")
                     if angle in z_nsf.keys() and bool(z_nsf[angle]):
                         print("Double angle. list: " + str(z_nsf) + " angle: " + str(angle))
-                    z_nsf[angle] = wsname
+                        self._sum_same(ws, z_nsf, angle, wsname)
+                    else:
+                        z_nsf[angle] = wsname
         logger.debug(str(x_sf))
         logger.debug(str(x_nsf))
         logger.debug(str(y_sf))
@@ -180,7 +212,7 @@ class DNSLoadData(PythonAlgorithm):
                 logger.debug(ws_n)
                 wsp = eval(ws_n).values()
                 logger.debug(str(wsp))
-                if not None in wsp:
+                if None not in wsp:
                     GroupWorkspaces(wsp, OutputWorkspace=gname)
                     self._use_ws.append(gname)
         else:
@@ -193,10 +225,11 @@ class DNSLoadData(PythonAlgorithm):
         else:
             self._load_ws_standard()
         logs = ['run_title', 'polarisation', 'flipper', 'deterota']
-        table_name = self.getProperty('OutputTable').value
+        table_name = self._out_ws_name + '_' + self.getProperty('OutputTable').value
         if self._use_ws:
+            logger.debug(str(self._use_ws))
+
             CreateLogPropertyTable(self._use_ws, OutputWorkspace=table_name, LogPropertyNames=logs, GroupPolicy='All')
-        #self.setProperty('OutputTable', table_name)
 
 
 AlgorithmFactory.subscribe(DNSLoadData)

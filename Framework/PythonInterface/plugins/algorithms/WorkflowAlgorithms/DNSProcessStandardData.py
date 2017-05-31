@@ -18,11 +18,13 @@ class DNSProcessStandardData(PythonAlgorithm):
         self.declareProperty(name='NiCrTable', defaultValue='', doc='Table of nicr Data')
         self.declareProperty(name='BackgroundTable', defaultValue='', doc='Table of background Data')
         self.declareProperty(name='OutputTable', defaultValue='', doc='Name of the output table')
+        self.declareProperty(name='OutWorkspaceName', defaultValue='')
 
     def PyExec(self):
 
         tables = []
         columnames = {}
+        ws_name = self.getProperty('OutWorkspaceName').value
         sample = mtd[self.getProperty('SampleTable').value]
         vana_name = self.getProperty('VanaTable').value
         nicr_name = self.getProperty('NiCrTable').value
@@ -42,7 +44,7 @@ class DNSProcessStandardData(PythonAlgorithm):
             leer = mtd[leer_name]
             tables.append(leer)
             columnames[leer.getName()] = 'Background ws'
-        out_table_name = self.getProperty('OutputTable').value
+        out_table_name = ws_name + '_' + self.getProperty('OutputTable').value
         logger.debug(sample.getName())
 
         tableWs = sample.clone(OutputWorkspace=out_table_name)
