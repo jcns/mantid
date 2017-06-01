@@ -58,6 +58,22 @@
                         <value val="0.80" />
                 </parameter>
 
+                <parameter name="sample_logs_sum" type="string">
+                        <value val="duration, mon_sum" />
+                </parameter>
+
+                <parameter name="sample_logs_time_series" type="string">
+                        <value val="sample.temperature, sample.pressure" />
+                </parameter>
+
+                <parameter name="sample_logs_list" type="string" >
+                        <value val="run_number"/>
+                </parameter>
+
+                <parameter name="keep_intermediate_workspace" type="bool">
+                        <value val="True"/>
+                </parameter>
+
 	</component-link>
 
 </parameter-file>

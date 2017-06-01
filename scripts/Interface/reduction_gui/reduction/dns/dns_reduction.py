@@ -566,7 +566,8 @@ class DNSScriptElement(BaseScriptElement):
         l("    DNSLoadData(StandardType='nicr', RefWorkspaces=sample_table, DataPath=stdpath, "
           "                OutWorkspaceName=workspaces[files_run], OutputTable='NicrDataTable')")
         l("    DNSLoadData(StandardType='leer', RefWorkspaces=sample_table, DataPath=stdpath,"
-          "                OutWorkspaceName=workspaces[files_run], OutputTable='BackgroundDataTable')")
+          "                OutWorkspaceName=workspaces[files_run], OutputTable='BackgroundDataTable', "
+          "                XAxisUnit=str(xax), Normalization=norm)")
         l("    DNSProcessStandardData(SampleTable=workspaces[files_run]+'_SampleDataTable', "
           "                           VanaTable=workspaces[files_run]+'_VanaDataTable', "
           "                           NiCrTable=workspaces[files_run]+'_NicrDataTable', "

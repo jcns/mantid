@@ -3,13 +3,40 @@ from __future__ import (absolute_import, division, print_function)
 from mantid.api import PythonAlgorithm, AlgorithmFactory, mtd, PropertyMode
 from mantid.kernel import logger, Direction, StringListValidator
 from mantid.simpleapi import LoadDNSLegacy, GroupWorkspaces, CreateLogPropertyTable, CompareSampleLogs, \
-    DeleteWorkspace, Plus, RenameWorkspace
+    DeleteWorkspace, Plus, RenameWorkspace, DNSMergeRuns, CloneWorkspace, Divide, LoadEmptyInstrument, MergeRuns
+import mantid.simpleapi as sapi
 
 import numpy as np
 
 import os
 
 class DNSLoadData(PythonAlgorithm):
+
+    def _extract_norm_workspace(self, wsgroup, norm):
+
+        norm_dict = {'time': 'duration', 'monitor': 'mon_sum'}
+        normlist = []
+        for i in range(wsgroup.getNumberOfEntries()):
+            ws = wsgroup.getItem(i)
+            normws = CloneWorkspace(ws, OutputWorkspace=ws.getName() + self._suff_norm)
+            val = ws.getRun().getProperty(norm_dict[norm]).value
+            for i in range(normws.getName()):
+                normws.setY(i, np.array([val]))
+                normws.setE(i, np.array([0.0]))
+            normlist.append(normws.getName())
+        GroupWorkspaces(normlist, OutputWorkspace=wsgroup.getName() + self._suff_norm)
+
+    def _merge_and_normalize(self, wsgroup, xax, namex= ''):
+        for x in xax:
+            data_merged = DNSMergeRuns(wsgroup + namex, x, OutputWorkspace=wsgroup + '_m0' + '_' + x)
+            norm_merged = DNSMergeRuns(wsgroup + self._suff_norm + namex, x,
+                                       OutputWorkspace=wsgroup + self._suff_norm + '_m' + '_' + x)
+            try:
+                Divide(data_merged, norm_merged, OutputWorkspace=wsgroup + '_m' + '_' + x)
+            except:
+                dataX = data_merged.extractX()
+                norm_merged.setX(0, dataX[0])
+                Divide(data_merged, norm_merged, OutputWorkspace=wsgroup+'_m' + '_' + x)
 
     def category(self):
         return "Workflow\\MLZ\\DNS"
@@ -25,7 +52,8 @@ class DNSLoadData(PythonAlgorithm):
         self.declareProperty(name='OutWorkspaceName', defaultValue='', doc='Name of the output workspace')
         self.declareProperty(name="OutputTable", defaultValue='',
                              doc='Name of the output table')
-        self.tol = 0.05
+        self.declareProperty(name='XAxisUnit', defaultValue='')
+        self.declareProperty(name='Normalization', defaultValue='')
 
     def is_in_list(self, angle_list, angle, tolerance):
         for a in angle_list:
@@ -68,7 +96,7 @@ class DNSLoadData(PythonAlgorithm):
                 logger.debug(wname)
                 if not mtd.doesExist(wname):
                     LoadDNSLegacy(Filename=full_file_name, OutputWorkspace=wname, Normalization='no')
-                if not wname in allcalibrationworkspaces:
+                if wname not in allcalibrationworkspaces:
                     allcalibrationworkspaces.append(wname)
         logger.debug(str(allcalibrationworkspaces))
         self._ref_ws = mtd[self.getProperty('RefWorkspaces').value]
@@ -100,10 +128,8 @@ class DNSLoadData(PythonAlgorithm):
 
     def _sum_same(self, ws_list, group_list, angle, ws_name):
         old_ws = group_list[angle]
-        new_ws = Plus(old_ws, ws_name)
         new_name = old_ws + '_' + ws_name
-        RenameWorkspace(new_ws, new_name)
-        new_ws.setTitle(new_name)
+        MergeRuns([old_ws, ws_name], OutputWorkspace=new_name)
         group_list[angle] = new_name
         loc = ws_list.index(ws_name)
         ws_list[loc] = new_name
@@ -215,10 +241,28 @@ class DNSLoadData(PythonAlgorithm):
                 if None not in wsp:
                     GroupWorkspaces(wsp, OutputWorkspace=gname)
                     self._use_ws.append(gname)
+            for var in group_names:
+                gname = var + '_group'
+                self._extract_norm_workspace(mtd[gname], self._norm)
+                if self._m_and_n:
+                    self._merge_and_normalize(gname, self.xax)
         else:
             self._use_ws = []
 
     def PyExec(self):
+
+        self.xax = self.getProperty('XAxisUnit')
+
+        tmp = LoadEmptyInstrument(InstrumentName='DNS')
+        self._instrument = tmp.getInstrument()
+        DeleteWorkspace(tmp)
+
+        self._suff_norm = self._instrument.getStringParameter("normws_suffix")[0]
+
+        self.tol = self._instrument.getStringParameter("two_theta_tolerance")[0]
+
+        self._m_and_n = self._instrument.getBoolParameter("keep_intermediate_workspace")[0]
+        self._norm = self.getProperty('Normalization').value
 
         if self.getProperty('FilesList').value:
             self._load_ws_sample()
