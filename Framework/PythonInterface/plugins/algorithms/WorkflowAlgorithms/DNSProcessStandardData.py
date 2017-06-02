@@ -14,7 +14,6 @@ class DNSProcessStandardData(PythonAlgorithm):
     def PyInit(self):
 
         self.declareProperty(name='SampleTable', defaultValue='', doc='Table of sample Data')
-        self.declareProperty(name='VanaTable', defaultValue='',  doc='Table of vana Data')
         self.declareProperty(name='NiCrTable', defaultValue='', doc='Table of nicr Data')
         self.declareProperty(name='BackgroundTable', defaultValue='', doc='Table of background Data')
         self.declareProperty(name='OutputTable', defaultValue='', doc='Name of the output table')
@@ -26,14 +25,8 @@ class DNSProcessStandardData(PythonAlgorithm):
         columnames = {}
         ws_name = self.getProperty('OutWorkspaceName').value
         sample = mtd[self.getProperty('SampleTable').value]
-        vana_name = self.getProperty('VanaTable').value
         nicr_name = self.getProperty('NiCrTable').value
         leer_name = self.getProperty('BackgroundTable').value
-        if mtd.doesExist(vana_name):
-            print('vana')
-            vana = mtd[vana_name]
-            tables.append(vana)
-            columnames[vana.getName()] = 'Vanadium ws'
         if mtd.doesExist(nicr_name):
             print('nicr')
             nicr = mtd[nicr_name]
@@ -50,7 +43,6 @@ class DNSProcessStandardData(PythonAlgorithm):
         tableWs = sample.clone(OutputWorkspace=out_table_name)
         logger.debug(tableWs.getName())
 
-        tableWs.addColumn('str', 'Vanadium ws')
         tableWs.addColumn('str', 'Background ws')
         tableWs.addColumn('str', 'Nicr ws')
 

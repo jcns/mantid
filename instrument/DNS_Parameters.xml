@@ -25,7 +25,7 @@
 
                 <!-- 2theta tolerance, degrees -->
                 <parameter name="two_theta_tolerance" type="string">
-                        <value val="0.1" />
+                        <value val="0.05" />
                 </parameter>
 
                 <!-- file suffixes to lookup for the standard data -->

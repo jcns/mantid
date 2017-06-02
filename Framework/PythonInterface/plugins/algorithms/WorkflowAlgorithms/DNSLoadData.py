@@ -19,15 +19,21 @@ class DNSLoadData(PythonAlgorithm):
         for i in range(wsgroup.getNumberOfEntries()):
             ws = wsgroup.getItem(i)
             normws = CloneWorkspace(ws, OutputWorkspace=ws.getName() + self._suff_norm)
+            logger.debug("run: " + str(ws.getRun()))
+            logger.debug("name property: " + norm_dict[norm])
+            logger.debug("property: " + str(ws.getRun().getProperty(norm_dict[norm])))
+            logger.debug("property value: " + str(ws.getRun().getProperty(norm_dict[norm]).value))
+            logger.debug("property value: " + str(ws.getRun().getProperty(norm_dict[norm]).value))
             val = ws.getRun().getProperty(norm_dict[norm]).value
-            for i in range(normws.getName()):
+            for i in range(len(normws.extractY())):
                 normws.setY(i, np.array([val]))
                 normws.setE(i, np.array([0.0]))
             normlist.append(normws.getName())
         GroupWorkspaces(normlist, OutputWorkspace=wsgroup.getName() + self._suff_norm)
 
     def _merge_and_normalize(self, wsgroup, xax, namex= ''):
-        for x in xax:
+        xaxis = xax.split(', ')
+        for x in xaxis:
             data_merged = DNSMergeRuns(wsgroup + namex, x, OutputWorkspace=wsgroup + '_m0' + '_' + x)
             norm_merged = DNSMergeRuns(wsgroup + self._suff_norm + namex, x,
                                        OutputWorkspace=wsgroup + self._suff_norm + '_m' + '_' + x)
@@ -129,13 +135,13 @@ class DNSLoadData(PythonAlgorithm):
     def _sum_same(self, ws_list, group_list, angle, ws_name):
         old_ws = group_list[angle]
         new_name = old_ws + '_' + ws_name
-        MergeRuns([old_ws, ws_name], OutputWorkspace=new_name)
+        new_ws = MergeRuns([old_ws, ws_name], OutputWorkspace=new_name)
+        new_ws.setTitle(new_name)
         group_list[angle] = new_name
         loc = ws_list.index(ws_name)
         ws_list[loc] = new_name
         DeleteWorkspace(old_ws)
         DeleteWorkspace(ws_name)
-
 
     def _group_ws(self, ws, deterota):
         x_sf = dict.fromkeys(deterota)
@@ -154,8 +160,14 @@ class DNSLoadData(PythonAlgorithm):
             logger.debug(str(polarisation))
             if 'vana' in ws[0] or 'nicr' in ws[0] or 'leer' in ws[0]:
                 for key in deterota:
+                    logger.debug(str(key))
+                    logger.debug(str(angle))
+                    logger.debug(str(np.fabs(angle-key)))
+                    logger.debug(str(self.tol))
+                    logger.debug(str(np.fabs(angle-key) < float(self.tol)))
                     if np.fabs(angle - key) < self.tol:
                         angle = key
+            logger.debug(str(angle))
             print(wsname)
             if flipper == 'ON':
                 if polarisation == 'x':
@@ -243,15 +255,22 @@ class DNSLoadData(PythonAlgorithm):
                     self._use_ws.append(gname)
             for var in group_names:
                 gname = var + '_group'
-                self._extract_norm_workspace(mtd[gname], self._norm)
-                if self._m_and_n:
-                    self._merge_and_normalize(gname, self.xax)
+                group_exist = True
+                try:
+                    mtd[gname]
+                except:
+                    group_exist = False
+                if group_exist:
+                    self._extract_norm_workspace(mtd[gname], self._norm)
+                    if self._m_and_n:
+                        self._merge_and_normalize(gname, self.xax)
         else:
             self._use_ws = []
 
     def PyExec(self):
 
-        self.xax = self.getProperty('XAxisUnit')
+        self.xax = self.getProperty('XAxisUnit').value
+        logger.debug(str(self.xax))
 
         tmp = LoadEmptyInstrument(InstrumentName='DNS')
         self._instrument = tmp.getInstrument()
@@ -259,10 +278,11 @@ class DNSLoadData(PythonAlgorithm):
 
         self._suff_norm = self._instrument.getStringParameter("normws_suffix")[0]
 
-        self.tol = self._instrument.getStringParameter("two_theta_tolerance")[0]
+        self.tol = float(self._instrument.getStringParameter("two_theta_tolerance")[0])
 
         self._m_and_n = self._instrument.getBoolParameter("keep_intermediate_workspace")[0]
         self._norm = self.getProperty('Normalization').value
+        logger.debug("norm: " + str(self._norm))
 
         if self.getProperty('FilesList').value:
             self._load_ws_sample()

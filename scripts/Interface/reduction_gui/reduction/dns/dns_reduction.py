@@ -539,7 +539,6 @@ class DNSScriptElement(BaseScriptElement):
         l("config['default.facility'] = '{}'".format(self.facility_name))
         l("config['default.instrument'] = '{}'".format(self.instrument_name))
         l()
-        l("tol = 0.5")
         l()
         l("datapath = '{}'".format(parameters['Sample Data']['Data path']))
         l("prefix = '{}'".format(parameters['Sample Data']['File prefix']))
@@ -558,24 +557,27 @@ class DNSScriptElement(BaseScriptElement):
         l("    files_run_str = ', '.join(files[files_run])")
         l("    logger.debug(files_run_str)")
         l("    logger.debug(files_run_str)")
+        l("    xax_str = ', '.join(xax)")
+        l("    logger.debug(xax_str)")
         l("    DNSLoadData(FilesList=files_run_str, DataPath=datapath, OutWorkspaceName=workspaces[files_run],"
-          "                OutputTable='SampleDataTable')")
+          "                OutputTable='SampleDataTable', XAxisUnit=xax_str, Normalization=norm)")
         l("    sample_table = mtd[workspaces[files_run]+'_SampleDataTable']")
         l("    DNSLoadData(StandardType='vana', RefWorkspaces=sample_table, DataPath=stdpath, "
-          "                OutWorkspaceName=workspaces[files_run], OutputTable='VanaDataTable')")
+          "                OutWorkspaceName=workspaces[files_run], OutputTable='VanaDataTable',"
+          "                XAxisUnit=xax_str, Normalization=norm)")
         l("    DNSLoadData(StandardType='nicr', RefWorkspaces=sample_table, DataPath=stdpath, "
-          "                OutWorkspaceName=workspaces[files_run], OutputTable='NicrDataTable')")
+          "                OutWorkspaceName=workspaces[files_run], OutputTable='NicrDataTable',"
+          "                XAxisUnit=xax_str, Normalization=norm)")
         l("    DNSLoadData(StandardType='leer', RefWorkspaces=sample_table, DataPath=stdpath,"
           "                OutWorkspaceName=workspaces[files_run], OutputTable='BackgroundDataTable', "
-          "                XAxisUnit=str(xax), Normalization=norm)")
+          "                XAxisUnit=xax_str, Normalization=norm)")
         l("    DNSProcessStandardData(SampleTable=workspaces[files_run]+'_SampleDataTable', "
-          "                           VanaTable=workspaces[files_run]+'_VanaDataTable', "
           "                           NiCrTable=workspaces[files_run]+'_NicrDataTable', "
           "                           BackgroundTable=workspaces[files_run]+'_BackgroundDataTable', "
           "                           OutputTable='ProcessedDataTable', OutWorkspaceName=workspaces[files_run])")
         l("    DNSProcessVanadium(VanadiumTable=workspaces[files_run]+'_VanaDataTable',"
           "                       BackgroundTable=workspaces[files_run]+'_BackgroundDataTable',"
-          "                       SampleTable=workspaces[files_run]+'_SampleDataTable', "
+          "                       SampleTable=workspaces[files_run]+'_ProcessedDataTable', "
           "                       OutWorkspaceName = workspaces[files_run])")
         """l("for run_table in range(len(workspaces)):")
         l("    logger.debug(str(workspaces[run_table]))")

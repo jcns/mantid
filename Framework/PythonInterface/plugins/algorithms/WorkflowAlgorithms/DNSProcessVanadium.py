@@ -2,7 +2,8 @@ from __future__ import (absolute_import, division, print_function)
 
 from mantid.api import PythonAlgorithm, AlgorithmFactory, mtd, ITableWorkspace
 from mantid.kernel import logger
-from mantid.simpleapi import Plus, Divide, GroupWorkspaces, SumSpectra, Mean, DNSMergeRuns, CloneWorkspace
+from mantid.simpleapi import Plus, Divide, GroupWorkspaces, SumSpectra, Mean, DNSMergeRuns,\
+    CloneWorkspace, LoadEmptyInstrument, DeleteWorkspace
 
 import numpy as np
 
@@ -11,7 +12,8 @@ class DNSProcessVanadium(PythonAlgorithm):
     def _merge_and_normalize(self, wsgroup, xax, namex= ''):
         for x in xax:
             data_merged = DNSMergeRuns(wsgroup + namex, x, OutputWorkspace=wsgroup + '_m0' + '_' + x)
-            norm_merged = DNSMergeRuns(wsgroup + '_norm' + namex, x, OutputWorkspace=wsgroup + '_norm_m' + '_' + x)
+            norm_merged = DNSMergeRuns(wsgroup + self.suff_norm + namex, x,
+                                       OutputWorkspace=wsgroup + self.suff_norm +'_m' + '_' + x)
             try:
                 Divide(data_merged, norm_merged, OutputWorkspace=wsgroup + '_m' + '_' + x)
             except:
@@ -38,88 +40,133 @@ class DNSProcessVanadium(PythonAlgorithm):
         self.sample_table = mtd[self.getProperty('SampleTable').value]
         out_ws_name = self.getProperty('OutWorkspaceName').value
 
+        tmp = LoadEmptyInstrument(InstrumentName='DNS')
+        self.instrument = tmp.getInstrument()
+        DeleteWorkspace(tmp)
+
+        self.suff_norm = self.instrument.getStringParameter('normws_suffix')[0]
+
         logger.debug(self.vana_table.getName())
         logger.debug(self.bkg_table.getName())
         logger.debug(self.sample_table.getName())
 
         new_sample_table = self.sample_table.clone(OutputWorkspace= out_ws_name + '_SampleTableVanaCoef')
 
-        new_sample_table.addColumn('str', 'vana')
-        new_sample_table.addColumn('str', 'coef')
+        new_sample_table.addColumn('str', 'vana_coef')
 
-        vana_x_sf_ws = []
-        vana_x_nsf_ws = []
-        vana_y_sf_ws = []
-        vana_y_nsf_ws = []
-        vana_z_sf_ws = []
-        vana_z_nsf_ws = []
+        if len(self.vana_table.column(0)) == len(self.sample_table.column(0)):
 
-        for i in range(len(self.vana_table.column(0))):
-            row = self.vana_table.row(i)
-            if row['polarisation'] == 'x':
-                if row['flipper'] == 'ON':
-                    vana_x_sf_ws.append(row['run_title'])
+            vana_x_sf_ws = []
+            vana_x_nsf_ws = []
+            vana_y_sf_ws = []
+            vana_y_nsf_ws = []
+            vana_z_sf_ws = []
+            vana_z_nsf_ws = []
+
+            for i in range(len(self.vana_table.column(0))):
+                row = self.vana_table.row(i)
+                if row['polarisation'] == 'x':
+                    if row['flipper'] == 'ON':
+                        vana_x_sf_ws.append(row['run_title'])
+                    else:
+                        vana_x_nsf_ws.append(row['run_title'])
+                elif row['polarisation'] == 'y':
+                    if row['flipper'] == 'ON':
+                        vana_y_sf_ws.append(row['run_title'])
+                    else:
+                        vana_y_nsf_ws.append(row['run_title'])
                 else:
-                    vana_x_nsf_ws.append(row['run_title'])
-            elif row['polarisation'] == 'y':
-                if row['flipper'] == 'ON':
-                    vana_y_sf_ws.append(row['run_title'])
-                else:
-                    vana_y_nsf_ws.append(row['run_title'])
-            else:
-                if row['flipper'] == 'ON':
-                    vana_z_sf_ws.append(row['run_title'])
-                else:
-                    vana_z_nsf_ws.append(row['run_title'])
+                    if row['flipper'] == 'ON':
+                        vana_z_sf_ws.append(row['run_title'])
+                    else:
+                        vana_z_nsf_ws.append(row['run_title'])
 
-        logger.debug('vana x sf:' + str(vana_x_sf_ws))
-        logger.debug('vana x nsf:' + str(vana_x_nsf_ws))
-        logger.debug('vana y sf: ' + str(vana_y_sf_ws))
-        logger.debug('vana y nsf: ' + str(vana_y_nsf_ws))
-        logger.debug('vana z sf: ' + str(vana_z_sf_ws))
-        logger.debug('vana z nsf: ' + str(vana_z_nsf_ws))
+            logger.debug('vana x sf:' + str(vana_x_sf_ws))
+            logger.debug('vana x nsf:' + str(vana_x_nsf_ws))
+            logger.debug('vana y sf: ' + str(vana_y_sf_ws))
+            logger.debug('vana y nsf: ' + str(vana_y_nsf_ws))
+            logger.debug('vana z sf: ' + str(vana_z_sf_ws))
+            logger.debug('vana z nsf: ' + str(vana_z_nsf_ws))
 
-        vana_sf_nsf_x_sum = None
-        vana_sf_nsf_y_sum = None
-        vana_sf_nsf_z_sum = None
-
-        if vana_x_sf_ws and vana_x_nsf_ws:
             vana_sf_nsf_x_sum = Plus(out_ws_name + '_rawvana_x_sf_group', out_ws_name + '_rawvana_x_nsf_group')
-        if vana_y_sf_ws and vana_y_nsf_ws:
-            vana_sf_nsf_y_sum = Plus(out_ws_name + '_rawvana_y_sf_group', out_ws_name + '_rawvana_y_nsf_group')
-        if vana_z_sf_ws and vana_z_nsf_ws:
-            vana_sf_nsf_z_sum = Plus(out_ws_name + '_rawvana_z_sf_group', out_ws_name + '_rawvana_z_nsf_group')
-
-        vana_total_x = None
-        vana_total_y = None
-        vana_total_z = None
-        vana_mean_x = None
-        vana_mean_y = None
-        vana_mean_z = None
-
-        if vana_sf_nsf_x_sum:
+            vana_sf_nsf_x_sum_norm = Plus(out_ws_name + 'rawvana_x_sf_group' + self.suff_norm,
+                                          out_ws_name + '_rawvana_x_nsf_group' + self.suff_norm)
             print(str(vana_sf_nsf_x_sum))
+            print(str(vana_sf_nsf_x_sum_norm))
             vana_total_x = SumSpectra(vana_sf_nsf_x_sum)
+            vana_total_x_norm = SumSpectra(vana_sf_nsf_x_sum_norm)
             vana_mean_x = Mean(', '.join(vana_total_x.getNames()))
+            vana_mean_x_norm = Mean(', '.join(vana_total_x_norm.getNames()))
+
             vana_coefs_x = vana_sf_nsf_x_sum/vana_mean_x
-        if vana_sf_nsf_y_sum:
+            vana_coefs_x_norm = vana_sf_nsf_x_sum_norm/vana_mean_x_norm
+
+            vana_sf_nsf_y_sum = Plus(out_ws_name + '_rawvana_y_sf_group', out_ws_name + '_rawvana_y_nsf_group')
+            vana_sf_nsf_y_sum_norm = Plus(out_ws_name + '_rawvana_y_sf_group' + self.suff_norm,
+                                          out_ws_name + '_rawvana_y_nsf_group' + self.suff_norm)
             print(str(vana_sf_nsf_y_sum))
+            print(str(vana_sf_nsf_y_sum_norm))
             vana_total_y = SumSpectra(vana_sf_nsf_y_sum)
+            vana_total_y_norm = SumSpectra(vana_sf_nsf_y_sum_norm)
             vana_mean_y = Mean(', '.join(vana_total_y.getNames()))
+            vana_mean_y_norm = Mean(', '.join(vana_total_y_norm.getNames()))
             vana_coefs_y = vana_sf_nsf_y_sum/vana_mean_y
-        if vana_sf_nsf_z_sum:
+            vana_coefs_y_norm = vana_sf_nsf_y_sum_norm/vana_mean_y_norm
+
+            vana_sf_nsf_z_sum = Plus(out_ws_name + '_rawvana_z_sf_group', out_ws_name + '_rawvana_z_nsf_group')
+            vana_sf_nsf_z_sum_norm = Plus(out_ws_name + '_rawvana_z_sf_group' + self.suff_norm,
+                                          out_ws_name + '_rawvana_z_nsf_group' + self.suff_norm)
             print(str(vana_sf_nsf_z_sum))
+            print(str(vana_sf_nsf_z_sum_norm))
             vana_total_z = SumSpectra(vana_sf_nsf_z_sum)
+            vana_total_z_norm = SumSpectra(vana_sf_nsf_z_sum_norm)
             vana_mean_z = Mean(', '.join(vana_total_z.getNames()))
+            vana_mean_z_norm = Mean(', '.join(vana_total_z_norm.getNames()))
             vana_coefs_z = vana_sf_nsf_z_sum/vana_mean_z
+            vana_coefs_z_norm = vana_sf_nsf_z_sum_norm/vana_mean_z_norm
 
+            for i in range(len(new_sample_table.column(0))):
+                row = new_sample_table.row(i)
+                if row['polarization'] == 'x':
+                    print(str(row))
+                logger.debug(str(vana_coefs_x))
 
+        elif len(self.sample_table.column(0))/3 == len(self.vana_table.column(0)):
 
+            vana_sf_ws = []
+            vana_nsf_ws = []
+            pol = None
 
+            for i in range(len(self.vana_table.column(0))):
+                row = self.vana_table.row(i)
+                if row['flipper'] == 'ON':
+                    vana_sf_ws.append(row['run_title'])
+                    pol = row['polarisation']
+                else:
+                    vana_nsf_ws.append(row['run_title'])
 
-        for i in range(len(new_sample_table.column(0))):
-            row = new_sample_table.row(i)
-            print(str(row))
+            vana_sf_nsf_sum = Plus(out_ws_name + '_rawvana_' + pol + "_sf_group",
+                                   out_ws_name + '_rawvana_' + pol + "_nsf_group")
+            vana_sf_nsf_sum_norm = Plus(out_ws_name + '_rawvana_' + pol + "_sf_group" + self.suff_norm,
+                                        out_ws_name + '_rawvana_' + pol + "_nsf_group" + self.suff_norm)
+
+            vana_total = SumSpectra(vana_sf_nsf_sum)
+            vana_total_norm = SumSpectra(vana_sf_nsf_sum_norm)
+            vana_mean = Mean(', '.join(vana_total.getNames()))
+            vana_mean_norm = Mean(', '.join(vana_total_norm.getNames()))
+            vana_coefs = vana_sf_nsf_sum/vana_mean
+            vana_coefs_norm = vana_sf_nsf_sum_norm/vana_mean_norm
+            vana_coefs_dict = {}
+
+            for coef_ws in vana_coefs:
+                logger.debug(str(coef_ws.getRun().getProperty('deterota').value))
+                vana_coefs_dict[coef_ws.getRun().getProperty('deterota').value] = coef_ws
+
+            for i in range(len(new_sample_table.column(0))):
+                row = new_sample_table.row(i)
+                row['vana_coef'] = vana_coefs_dict[row['deterota']]
+                print(str(row))
+
 
 
 AlgorithmFactory.subscribe(DNSProcessVanadium)
