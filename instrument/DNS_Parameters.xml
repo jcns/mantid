@@ -63,7 +63,7 @@
                 </parameter>
 
                 <parameter name="sample_logs_time_series" type="string">
-                        <value val="sample.temperature, sample.pressure" />
+                        <value val="T1, T2, Tsp" />
                 </parameter>
 
                 <parameter name="sample_logs_list" type="string" >

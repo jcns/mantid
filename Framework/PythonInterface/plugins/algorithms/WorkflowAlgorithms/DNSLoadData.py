@@ -3,12 +3,14 @@ from __future__ import (absolute_import, division, print_function)
 from mantid.api import PythonAlgorithm, AlgorithmFactory, mtd, PropertyMode
 from mantid.kernel import logger, Direction, StringListValidator
 from mantid.simpleapi import LoadDNSLegacy, GroupWorkspaces, CreateLogPropertyTable, CompareSampleLogs, \
-    DeleteWorkspace, Plus, RenameWorkspace, DNSMergeRuns, CloneWorkspace, Divide, LoadEmptyInstrument, MergeRuns
+    DeleteWorkspace, Plus, AddSampleLog, DNSMergeRuns, CloneWorkspace, Divide, LoadEmptyInstrument, MergeRuns
 import mantid.simpleapi as sapi
 
 import numpy as np
 
 import os
+
+from collections import OrderedDict
 
 class DNSLoadData(PythonAlgorithm):
 
@@ -134,13 +136,13 @@ class DNSLoadData(PythonAlgorithm):
 
     def _sum_same(self, ws_list, group_list, angle, ws_name):
         old_ws = group_list[angle]
-        new_name = old_ws + '_' + ws_name
+        new_name = old_ws
+        AddSampleLog(old_ws, 'run_number', old_ws)
+        AddSampleLog(ws_name, 'run_number', ws_name)
         new_ws = MergeRuns([old_ws, ws_name], OutputWorkspace=new_name)
-        new_ws.setTitle(new_name)
-        group_list[angle] = new_name
+        new_ws.setTitle(old_ws)
         loc = ws_list.index(ws_name)
-        ws_list[loc] = new_name
-        DeleteWorkspace(old_ws)
+        ws_list[loc] = old_ws
         DeleteWorkspace(ws_name)
 
     def _group_ws(self, ws, deterota):
@@ -213,6 +215,13 @@ class DNSLoadData(PythonAlgorithm):
                         self._sum_same(ws, z_nsf, angle, wsname)
                     else:
                         z_nsf[angle] = wsname
+
+        x_sf = OrderedDict(sorted(x_sf.items()))
+        x_nsf = OrderedDict(sorted(x_nsf.items()))
+        y_sf = OrderedDict(sorted(y_sf.items()))
+        y_nsf = OrderedDict(sorted(y_nsf.items()))
+        z_sf = OrderedDict(sorted(z_sf.items()))
+        z_nsf = OrderedDict(sorted(z_nsf.items()))
         logger.debug(str(x_sf))
         logger.debug(str(x_nsf))
         logger.debug(str(y_sf))
@@ -264,6 +273,7 @@ class DNSLoadData(PythonAlgorithm):
                     self._extract_norm_workspace(mtd[gname], self._norm)
                     if self._m_and_n:
                         self._merge_and_normalize(gname, self.xax)
+
         else:
             self._use_ws = []
 

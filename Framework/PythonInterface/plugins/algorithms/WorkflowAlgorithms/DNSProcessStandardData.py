@@ -2,7 +2,7 @@ from __future__ import (absolute_import, division, print_function)
 
 from mantid.api import PythonAlgorithm, AlgorithmFactory, ITableWorkspace, ITableWorkspaceProperty, mtd
 from mantid.kernel import logger, Direction
-from mantid.simpleapi import CreateEmptyTableWorkspace
+from mantid.simpleapi import CreateEmptyTableWorkspace, Minus
 import numpy as np
 
 
@@ -18,6 +18,7 @@ class DNSProcessStandardData(PythonAlgorithm):
         self.declareProperty(name='BackgroundTable', defaultValue='', doc='Table of background Data')
         self.declareProperty(name='OutputTable', defaultValue='', doc='Name of the output table')
         self.declareProperty(name='OutWorkspaceName', defaultValue='')
+        self.declareProperty(name='SubtractBackground', defaultValue='')
 
     def PyExec(self):
 
@@ -55,6 +56,14 @@ class DNSProcessStandardData(PythonAlgorithm):
                         if row_out['flipper'] == row['flipper']:
                             if np.abs(float(row_out['deterota'])-float(row['deterota'])) < 0.5:
                                 tableWs.setCell(columnames[t.getName()], i, row['run_title'])
+
+        for p in ['_x', '_y', '_z']:
+            for flip in ['_sf', '_nsf']:
+                if self.getProperty('SubtractBackground').value:
+                    inws = ws_name+'_rawdata'+p+flip+'_group'
+                    bkgws = ws_name+'_leer'+p+flip+'_group'
+                    resws = ws_name+'_data'+p+flip
+                    Minus(inws,bkgws,OutputWorkspace=resws)
 
 
 

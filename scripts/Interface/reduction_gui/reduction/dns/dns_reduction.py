@@ -352,7 +352,7 @@ class DNSScriptElement(BaseScriptElement):
                 if not found:
                     error('no file for detector efficiency correction in '
                           + str(self.standardDataPath) + ' found')
-            if self.subInst:
+            if self.subInst or self.detEffi or self.flippRatio:
                 subInstFilename = instrument.getStringParameter("bkg")[0]
                 found = _search_file(self.standardDataPath, subInstFilename)
                 if not found:
@@ -549,6 +549,9 @@ class DNSScriptElement(BaseScriptElement):
         l("xax = {}".format(parameters['Sample']['Abscissa']))
         l("flipper_bool = {}".format(parameters['Data reduction settings']['Flipping ratio correction']))
         l()
+        l("detEffi = {}".format(self.detEffi))
+        l("flippRatio = {}".format(self.flippRatio))
+        l("subInst = {}".format(self.subInst))
         l("norm = '{}'".format(parameters['Data reduction settings']['Normalization']))
         l("stdpath = '{}'".format(parameters['Standard Data']['Path']))
         l()
@@ -562,23 +565,29 @@ class DNSScriptElement(BaseScriptElement):
         l("    DNSLoadData(FilesList=files_run_str, DataPath=datapath, OutWorkspaceName=workspaces[files_run],"
           "                OutputTable='SampleDataTable', XAxisUnit=xax_str, Normalization=norm)")
         l("    sample_table = mtd[workspaces[files_run]+'_SampleDataTable']")
-        l("    DNSLoadData(StandardType='vana', RefWorkspaces=sample_table, DataPath=stdpath, "
-          "                OutWorkspaceName=workspaces[files_run], OutputTable='VanaDataTable',"
-          "                XAxisUnit=xax_str, Normalization=norm)")
-        l("    DNSLoadData(StandardType='nicr', RefWorkspaces=sample_table, DataPath=stdpath, "
-          "                OutWorkspaceName=workspaces[files_run], OutputTable='NicrDataTable',"
-          "                XAxisUnit=xax_str, Normalization=norm)")
-        l("    DNSLoadData(StandardType='leer', RefWorkspaces=sample_table, DataPath=stdpath,"
-          "                OutWorkspaceName=workspaces[files_run], OutputTable='BackgroundDataTable', "
-          "                XAxisUnit=xax_str, Normalization=norm)")
-        l("    DNSProcessStandardData(SampleTable=workspaces[files_run]+'_SampleDataTable', "
-          "                           NiCrTable=workspaces[files_run]+'_NicrDataTable', "
-          "                           BackgroundTable=workspaces[files_run]+'_BackgroundDataTable', "
-          "                           OutputTable='ProcessedDataTable', OutWorkspaceName=workspaces[files_run])")
-        l("    DNSProcessVanadium(VanadiumTable=workspaces[files_run]+'_VanaDataTable',"
-          "                       BackgroundTable=workspaces[files_run]+'_BackgroundDataTable',"
-          "                       SampleTable=workspaces[files_run]+'_ProcessedDataTable', "
-          "                       OutWorkspaceName = workspaces[files_run])")
+        l("    if detEffi:")
+        l("        DNSLoadData(StandardType='vana', RefWorkspaces=sample_table, DataPath=stdpath, "
+          "                    OutWorkspaceName=workspaces[files_run], OutputTable='VanaDataTable',"
+          "                    XAxisUnit=xax_str, Normalization=norm)")
+        l("    if flippRatio:")
+        l("        DNSLoadData(StandardType='nicr', RefWorkspaces=sample_table, DataPath=stdpath, "
+          "                    OutWorkspaceName=workspaces[files_run], OutputTable='NicrDataTable',"
+          "                    XAxisUnit=xax_str, Normalization=norm)")
+        l("    print(subInst)")
+        l("    if detEffi or flippRatio or subInst:")
+        l("        DNSLoadData(StandardType='leer', RefWorkspaces=sample_table, DataPath=stdpath,"
+          "                    OutWorkspaceName=workspaces[files_run], OutputTable='BackgroundDataTable', "
+          "                    XAxisUnit=xax_str, Normalization=norm)")
+        l("        DNSProcessStandardData(SampleTable=workspaces[files_run]+'_SampleDataTable', "
+          "                               NiCrTable=workspaces[files_run]+'_NicrDataTable', "
+          "                               BackgroundTable=workspaces[files_run]+'_BackgroundDataTable', "
+          "                               OutputTable='ProcessedDataTable', OutWorkspaceName=workspaces[files_run],"
+          "                               SubtractBackground = str(subInst))")
+        l("    if detEffi:")
+        l("        DNSProcessVanadium(VanadiumTable=workspaces[files_run]+'_VanaDataTable',"
+          "                           BackgroundTable=workspaces[files_run]+'_BackgroundDataTable',"
+          "                           SampleTable=workspaces[files_run]+'_ProcessedDataTable', "
+          "                           OutWorkspaceName = workspaces[files_run])")
         """l("for run_table in range(len(workspaces)):")
         l("    logger.debug(str(workspaces[run_table]))")
         l("    dataworkspaces = []")
