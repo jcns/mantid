@@ -2,11 +2,27 @@ from __future__ import (absolute_import, division, print_function)
 
 from mantid.api import PythonAlgorithm, AlgorithmFactory, ITableWorkspace, ITableWorkspaceProperty, mtd
 from mantid.kernel import logger, Direction
-from mantid.simpleapi import CreateEmptyTableWorkspace, Minus
+from mantid.simpleapi import CreateEmptyTableWorkspace, Minus, CloneWorkspace, Divide, LoadEmptyInstrument, \
+    DeleteWorkspace, Multiply, DNSMergeRuns
 import numpy as np
 
 
 class DNSProcessStandardData(PythonAlgorithm):
+
+    def _merge_and_normalize(self, wsgroup, xax, namex=''):
+        print(xax)
+        xaxis = xax.split(', ')
+        print(str(xaxis))
+        for x in xaxis:
+            data_merged = DNSMergeRuns(wsgroup + namex, x, OutputWorkspace=wsgroup + '_m0' + '_' + x)
+            norm_merged = DNSMergeRuns(wsgroup + self.suff_norm + namex, x,
+                                       OutputWorkspace=wsgroup + self.suff_norm +'_m' + '_' + x)
+            try:
+                Divide(data_merged, norm_merged, OutputWorkspace=wsgroup + '_m' + '_' + x)
+            except:
+                dataX = data_merged.extractX()
+                norm_merged.setX(0, dataX[0])
+                Divide(data_merged, norm_merged, OutputWorkspace=wsgroup+'_m' + '_' + x)
 
     def category(self):
         return "Workflow\\MLZ\\DNS"
@@ -17,8 +33,9 @@ class DNSProcessStandardData(PythonAlgorithm):
         self.declareProperty(name='NiCrTable', defaultValue='', doc='Table of nicr Data')
         self.declareProperty(name='BackgroundTable', defaultValue='', doc='Table of background Data')
         self.declareProperty(name='OutputTable', defaultValue='', doc='Name of the output table')
-        self.declareProperty(name='OutWorkspaceName', defaultValue='')
-        self.declareProperty(name='SubtractBackground', defaultValue='')
+        self.declareProperty(name='OutWorkspaceName', defaultValue='', doc='')
+        self.declareProperty(name='SubtractBackground', defaultValue='', doc='')
+        self.declareProperty(name='XAxisUnits', defaultValue='')
 
     def PyExec(self):
 
@@ -28,6 +45,14 @@ class DNSProcessStandardData(PythonAlgorithm):
         sample = mtd[self.getProperty('SampleTable').value]
         nicr_name = self.getProperty('NiCrTable').value
         leer_name = self.getProperty('BackgroundTable').value
+        self.xax = self.getProperty('XAxisUnits').value
+        print(self.xax)
+
+        tmp = LoadEmptyInstrument(InstrumentName='DNS')
+        self.instrument = tmp.getInstrument()
+        DeleteWorkspace(tmp)
+        self.suff_norm = self.instrument.getStringParameter('normws_suffix')[0]
+
         if mtd.doesExist(nicr_name):
             print('nicr')
             nicr = mtd[nicr_name]
@@ -57,13 +82,25 @@ class DNSProcessStandardData(PythonAlgorithm):
                             if np.abs(float(row_out['deterota'])-float(row['deterota'])) < 0.5:
                                 tableWs.setCell(columnames[t.getName()], i, row['run_title'])
 
+        norm_ratio = {}
+        leer_scaled = {}
         for p in ['_x', '_y', '_z']:
             for flip in ['_sf', '_nsf']:
                 if self.getProperty('SubtractBackground').value:
                     inws = ws_name+'_rawdata'+p+flip+'_group'
                     bkgws = ws_name+'_leer'+p+flip+'_group'
-                    resws = ws_name+'_data'+p+flip
-                    Minus(inws,bkgws,OutputWorkspace=resws)
+                    norm_ratio[p+flip] = Divide(inws+self.suff_norm, bkgws+self.suff_norm,
+                                                OutputWorkspace=ws_name+'_rawdata'+p+flip+'_nratio')
+                    leer_scaled[p+flip] = Multiply(bkgws, norm_ratio[p+flip],
+                                                   OutputWorkspace=ws_name+'_leer'+p+flip+'_rawdata')
+                    Minus(inws, leer_scaled[p+flip], OutputWorkspace=ws_name+'_data'+p+flip+'_group')
+                    CloneWorkspace(inws+self.suff_norm, OutputWorkspace=ws_name+'_data'+p+flip+'_group'+self.suff_norm)
+                    self._merge_and_normalize(ws_name+'_data'+p+flip+'_group', self.xax)
+                    #bkgws = ws_name+'_leer'+p+flip+'_group'
+                    #resws = ws_name+'_data'+p+flip+'_group'
+                    #Minus(inws,bkgws,OutputWorkspace=resws)
+                else:
+                    CloneWorkspace(ws_name+'_rawdata'+p+flip+'_group', ws_name+'_data'+p+flip+'_group')
 
 
 

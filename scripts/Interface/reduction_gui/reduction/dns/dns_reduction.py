@@ -549,6 +549,8 @@ class DNSScriptElement(BaseScriptElement):
         l("xax = {}".format(parameters['Sample']['Abscissa']))
         l("flipper_bool = {}".format(parameters['Data reduction settings']['Flipping ratio correction']))
         l()
+        if self.flippRatio:
+            l("flippFac = {}".format(parameters['Data reduction settings']['Flipping ratio factor']))
         l("detEffi = {}".format(self.detEffi))
         l("flippRatio = {}".format(self.flippRatio))
         l("subInst = {}".format(self.subInst))
@@ -582,12 +584,17 @@ class DNSScriptElement(BaseScriptElement):
           "                               NiCrTable=workspaces[files_run]+'_NicrDataTable', "
           "                               BackgroundTable=workspaces[files_run]+'_BackgroundDataTable', "
           "                               OutputTable='ProcessedDataTable', OutWorkspaceName=workspaces[files_run],"
-          "                               SubtractBackground = str(subInst))")
+          "                               SubtractBackground = str(subInst), XAxisUnits=xax_str)")
         l("    if detEffi:")
         l("        DNSProcessVanadium(VanadiumTable=workspaces[files_run]+'_VanaDataTable',"
           "                           BackgroundTable=workspaces[files_run]+'_BackgroundDataTable',"
           "                           SampleTable=workspaces[files_run]+'_ProcessedDataTable', "
-          "                           OutWorkspaceName = workspaces[files_run])")
+          "                           OutWorkspaceName = workspaces[files_run], OutputXAxis=xax_str)")
+        l("        sample_table = mtd[workspaces[files_run]+'_SampleTableVanaCoef']")
+        l("    if flippRatio:")
+        l("        DNSProcessNiCr(NiCrTable=workspaces[files_run]+'_NicrDataTable', SampleTable=sample_table,"
+          "                       OutputWorkspaceName=workspaces[files_run], XAxisUnits=xax_str, "
+          "                       DetEffiCorrection=str(detEffi), FlippCorrFactor=str(flippFac))")
         """l("for run_table in range(len(workspaces)):")
         l("    logger.debug(str(workspaces[run_table]))")
         l("    dataworkspaces = []")

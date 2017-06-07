@@ -10,7 +10,8 @@ import numpy as np
 class DNSProcessVanadium(PythonAlgorithm):
 
     def _merge_and_normalize(self, wsgroup, xax, namex= ''):
-        for x in xax:
+        xaxis = xax.split(', ')
+        for x in xaxis:
             data_merged = DNSMergeRuns(wsgroup + namex, x, OutputWorkspace=wsgroup + '_m0' + '_' + x)
             norm_merged = DNSMergeRuns(wsgroup + self.suff_norm + namex, x,
                                        OutputWorkspace=wsgroup + self.suff_norm +'_m' + '_' + x)
@@ -134,7 +135,8 @@ class DNSProcessVanadium(PythonAlgorithm):
                 self._merge_and_normalize(out_ws_name + '_vana_' + p + '_nsf_group', self.xax)
 
 
-            vana_sf_nsf_x_sum = Plus(out_ws_name + '_vana_x_sf_group', out_ws_name + '_vana_x_nsf_group')
+            vana_sf_nsf_x_sum = Plus(out_ws_name + '_vana_x_sf_group',
+                                     out_ws_name + '_vana_x_nsf_group')
             vana_sf_nsf_x_sum_norm = Plus(out_ws_name + 'vana_x_sf_group' + self.suff_norm,
                                           out_ws_name + '_vana_x_nsf_group' + self.suff_norm)
             print(str(vana_sf_nsf_x_sum))
@@ -146,10 +148,11 @@ class DNSProcessVanadium(PythonAlgorithm):
 
             vana_coefs_x = vana_sf_nsf_x_sum/vana_mean_x
             vana_coefs_x_norm = vana_sf_nsf_x_sum_norm/vana_mean_x_norm
+            vana_coefs_x_total = vana_coefs_x/vana_coefs_x_norm
 
             vana_coefs_dict_x = {}
 
-            for coef_ws in vana_coefs_x:
+            for coef_ws in vana_coefs_x_total:
                 vana_coefs_dict_x[round(coef_ws.getRun().getProperty('deterota').value, 1)] = coef_ws.getName()
 
             vana_sf_nsf_y_sum = Plus(out_ws_name + '_vana_y_sf_group', out_ws_name + '_vana_y_nsf_group')
@@ -163,10 +166,11 @@ class DNSProcessVanadium(PythonAlgorithm):
             vana_mean_y_norm = Mean(', '.join(vana_total_y_norm.getNames()))
             vana_coefs_y = vana_sf_nsf_y_sum/vana_mean_y
             vana_coefs_y_norm = vana_sf_nsf_y_sum_norm/vana_mean_y_norm
+            vana_coefs_y_total = vana_coefs_y/vana_coefs_y_norm
 
             vana_coefs_dict_y = {}
 
-            for coef_ws in vana_coefs_y:
+            for coef_ws in vana_coefs_y_total:
                 vana_coefs_dict_y[round(coef_ws.getRun().getProperty('deterota').value, 1)] = coef_ws.getName()
 
             vana_sf_nsf_z_sum = Plus(out_ws_name + '_vana_z_sf_group', out_ws_name + '_vana_z_nsf_group')
@@ -180,10 +184,11 @@ class DNSProcessVanadium(PythonAlgorithm):
             vana_mean_z_norm = Mean(', '.join(vana_total_z_norm.getNames()))
             vana_coefs_z = vana_sf_nsf_z_sum/vana_mean_z
             vana_coefs_z_norm = vana_sf_nsf_z_sum_norm/vana_mean_z_norm
+            vana_coefs_z_total = vana_coefs_z/vana_coefs_z_norm
 
             vana_coefs_dict_z = {}
 
-            for coef_ws in vana_coefs_z:
+            for coef_ws in vana_coefs_z_total:
                 vana_coefs_dict_z[round(coef_ws.getRun().getProperty('deterota').value, 1)] = coef_ws.getName()
 
             for i in range(len(new_sample_table.column(0))):
@@ -243,9 +248,11 @@ class DNSProcessVanadium(PythonAlgorithm):
             vana_mean_norm = Mean(', '.join(vana_total_norm.getNames()))
             vana_coefs = vana_sf_nsf_sum/vana_mean
             vana_coefs_norm = vana_sf_nsf_sum_norm/vana_mean_norm
+            vana_coefs_total = vana_coefs/vana_coefs_norm
             vana_coefs_dict = {}
 
-            for coef_ws in vana_coefs:
+            #for coef_ws in vana_coefs:
+            for coef_ws in vana_coefs_total:
                 logger.debug(str(round(coef_ws.getRun().getProperty('deterota').value, 1)))
                 vana_coefs_dict[round(coef_ws.getRun().getProperty('deterota').value, 1)] = coef_ws.getName()
 
@@ -254,12 +261,6 @@ class DNSProcessVanadium(PythonAlgorithm):
                 new_sample_table.setCell('vana_coef', i, vana_coefs_dict[round(float(row['deterota']), 1)])
                 print(str(row))
 
-            for p in ['x', 'y', 'z']:
-                for gr in ['_data_'+p+'_sf', '_data_'+p+'_nsf']:
-                    print(gr)
-                    Divide(out_ws_name+gr,vana_coefs, OutputWorkspace=out_ws_name+gr+'_vanacorr')
-                    for x in self.xax:
-                        DNSMergeRuns(out_ws_name+gr+'_vanacorr', x, out_ws_name+gr+'_vanacorr'+x)
 
 
 
