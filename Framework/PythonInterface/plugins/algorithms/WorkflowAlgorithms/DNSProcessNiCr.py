@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function)
 from mantid.api import PythonAlgorithm, AlgorithmFactory, ITableWorkspace, mtd
 from mantid.kernel import logger
 from mantid.simpleapi import LoadEmptyInstrument,GroupWorkspaces, DeleteWorkspace, Divide, Multiply, Minus, \
-    CloneWorkspace, DNSMergeRuns
+    CloneWorkspace, DNSMergeRuns, Scale
 
 class DNSProcessNiCr(PythonAlgorithm):
 
@@ -102,11 +102,16 @@ class DNSProcessNiCr(PythonAlgorithm):
                 Minus(nicr_ws, bkg_ws, OutputWorkspace=self.out_ws_name+'_nicr'+p+flipp+'_group')
 
         for p in ['_x', '_y', '_z']:
-            nicr_coef = Divide(self.out_ws_name+'_nicr'+p+'_nsf_group', self.out_ws_name+'_nicr'+p+'_sf_group',
-                               OutputWorkspace=self.out_ws_name+'_nicr_coef'+p)
-            for ws in mtd[self.out_ws_name+'_nicr_coef'+p]:
-                print(ws)
-                ws = ws * self.flippFac - 1.0
+            nicr_coef_first = Divide(self.out_ws_name+'_nicr'+p+'_nsf_group', self.out_ws_name+'_nicr'+p+'_sf_group',
+                               OutputWorkspace=self.out_ws_name+'_nicr_coef'+p+'_first')
+            nicr_scaled = Scale(nicr_coef_first, OutputWorkspace=self.out_ws_name+'_nicr_coef'+p+'_scaled',
+                                Factor=self.flippFac, Operation='Multiply')
+            nicr_coef = Scale(nicr_scaled, OutputWorkspace=self.out_ws_name+'_nicr_coef'+p,
+                                Factor=-1.0, Operation='Add')
+
+            #for ws in nicr_coef:
+            #    print(str(ws.readX(0)))
+            #    MultiplyRange(ws, StartBin=0, EndBin=len(ws.readY(0))-1, Factor=self.flippFac)
 
             coefs_norm[p[1:]] = nicr_coef
 

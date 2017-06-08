@@ -86,21 +86,23 @@ class DNSProcessStandardData(PythonAlgorithm):
         leer_scaled = {}
         for p in ['_x', '_y', '_z']:
             for flip in ['_sf', '_nsf']:
-                if self.getProperty('SubtractBackground').value:
-                    inws = ws_name+'_rawdata'+p+flip+'_group'
-                    bkgws = ws_name+'_leer'+p+flip+'_group'
-                    norm_ratio[p+flip] = Divide(inws+self.suff_norm, bkgws+self.suff_norm,
-                                                OutputWorkspace=ws_name+'_rawdata'+p+flip+'_nratio')
-                    leer_scaled[p+flip] = Multiply(bkgws, norm_ratio[p+flip],
-                                                   OutputWorkspace=ws_name+'_leer'+p+flip+'_rawdata')
-                    Minus(inws, leer_scaled[p+flip], OutputWorkspace=ws_name+'_data'+p+flip+'_group')
-                    CloneWorkspace(inws+self.suff_norm, OutputWorkspace=ws_name+'_data'+p+flip+'_group'+self.suff_norm)
-                    self._merge_and_normalize(ws_name+'_data'+p+flip+'_group', self.xax)
-                    #bkgws = ws_name+'_leer'+p+flip+'_group'
-                    #resws = ws_name+'_data'+p+flip+'_group'
-                    #Minus(inws,bkgws,OutputWorkspace=resws)
-                else:
-                    CloneWorkspace(ws_name+'_rawdata'+p+flip+'_group', ws_name+'_data'+p+flip+'_group')
+                inws = ws_name+'_rawdata'+p+flip+'_group'
+                bkgws = ws_name+'_leer'+p+flip+'_group'
+                if mtd.doesExist(inws):
+                    if self.getProperty('SubtractBackground').value:
+                        print('Sub bkg. data: ', inws, ' bkg: ', bkgws)
+                        norm_ratio[p+flip] = Divide(inws+self.suff_norm, bkgws+self.suff_norm,
+                                                    OutputWorkspace=ws_name+'_rawdata'+p+flip+'_nratio')
+                        leer_scaled[p+flip] = Multiply(bkgws, norm_ratio[p+flip],
+                                                       OutputWorkspace=ws_name+'_leer'+p+flip+'_rawdata')
+                        Minus(inws, leer_scaled[p+flip], OutputWorkspace=ws_name+'_data'+p+flip+'_group')
+                        CloneWorkspace(inws+self.suff_norm, OutputWorkspace=ws_name+'_data'+p+flip+'_group'+self.suff_norm)
+                        self._merge_and_normalize(ws_name+'_data'+p+flip+'_group', self.xax)
+                        #bkgws = ws_name+'_leer'+p+flip+'_group'
+                        #resws = ws_name+'_data'+p+flip+'_group'
+                        #Minus(inws,bkgws,OutputWorkspace=resws)
+                    else:
+                        CloneWorkspace(inws, ws_name+'_data'+p+flip+'_group')
 
 
 

@@ -46,6 +46,7 @@ class DNSProcessVanadium(PythonAlgorithm):
         DeleteWorkspace(tmp)
 
         self.suff_norm = self.instrument.getStringParameter('normws_suffix')[0]
+        self.tol = float(self.instrument.getStringParameter('two_theta_tolerance')[0])
 
         logger.debug(self.vana_table.getName())
         logger.debug(self.bkg_table.getName())
@@ -57,7 +58,27 @@ class DNSProcessVanadium(PythonAlgorithm):
 
         new_sample_table.addColumn('str', 'vana_coef')
 
-        if len(self.vana_table.column(0)) == len(self.sample_table.column(0)):
+        if len(self.vana_table.column(0)) == len(self.sample_table.column(0)) \
+                and len(self.bkg_table.column(0)) == len(self.vana_table.column(0)):
+            print('same')
+            for p in ['_x', '_y', '_z']:
+                for flipp in ['_sf', '_nsf']:
+                    vana_ws = out_ws_name+'_rawvana'+p+flipp+'_group'
+                    bkg_ws = out_ws_name+'_leer'+p+flipp+'_group'
+                    Minus(vana_ws, bkg_ws, OutputWorkspace=out_ws_name+'_vana'+p+flipp+'_group')
+
+            vana_coefs_dict = {}
+            deterota = []
+
+            for p in ['_x', '_y', '_z']:
+                vana_sf = out_ws_name+'_vana'+p+'_sf_group'
+                vana_nsf = out_ws_name+'_vana'+p+'_nsf_group'
+                vana_sf_nsf_sum_this = Plus(vana_sf, vana_nsf, OutputWorkspace='vana_sf_nsf_sum'+p)
+                vana_mean = Mean(', '.join(vana_sf_nsf_sum_this.getNames()), OutputWorkspace='vana_mean'+p)
+                vana_total = SumSpectra(vana_mean, OutputWorkspace='vana_total'+p)
+                vana_coefs = Divide(vana_sf_nsf_sum_this, vana_total, OutputWorkspace='vana_coefs'+p)
+                vana_coefs_dict[p[1:]] = vana_coefs
+            """
 
             vana_x_sf_ws = []
             vana_x_nsf_ws = []
@@ -199,9 +220,44 @@ class DNSProcessVanadium(PythonAlgorithm):
                     new_sample_table.setCell('vana_coef', i, vana_coefs_dict_y[round(float(row['deterota']), 1)])
                 if row['polarization'] == 'z':
                     new_sample_table.setCell('vana_coef', i, vana_coefs_dict_z[round(float(row['deterota']), 1)])
+            """
 
-        elif len(self.sample_table.column(0))/3 == len(self.vana_table.column(0)):
+            for coef in vana_coefs_dict:
+                deterota_dict = {}
+                for ws in vana_coefs_dict[coef]:
+                    deterota.append(ws.getRun().getProperty('deterota').value)
+                    deterota_dict[ws.getRun().getProperty('deterota').value] = ws.getName()
+                vana_coefs_dict[coef] = deterota_dict
 
+            for i in range(len(new_sample_table)):
+                row = new_sample_table.row(i)
+                angle = float(row['deterota'])
+                for key in deterota:
+                    if np.fabs(angle - key) < self.tol:
+                        angle = key
+                new_sample_table.setCell('vana_coef', i,
+                                         vana_coefs_dict[row['polarisation'][angle]])
+
+        elif len(self.sample_table.column(0))/3 == len(self.vana_table.column(0))\
+                or len(self.bkg_table.column(0))/3 == len(self.vana_table.column(0)):
+
+            pol = self.vana_table.cell('polarisation', 0)
+            deterota = []
+
+            for flipp in ['_sf', '_nsf']:
+                vana_ws = out_ws_name+'_rawvana_'+pol+flipp+'_group'
+                bkg_ws = out_ws_name+'_leer_'+pol+flipp+'_group'
+                Minus(vana_ws, bkg_ws, OutputWorkspace=out_ws_name+'_vana_'+pol+flipp+'_group')
+
+            vana_sf = out_ws_name+'_vana_'+pol+'_sf_group'
+            vana_nsf = out_ws_name+'_vana_'+pol+'_nsf_group'
+            vana_sf_nsf_sum = Plus(vana_sf, vana_nsf)
+            vana_mean = Mean(', '.join(vana_sf_nsf_sum.getNames()))
+            vana_total = SumSpectra(vana_mean)
+            vana_coefs = Divide(vana_sf_nsf_sum, vana_total)
+
+
+            """
             vana_sf_ws = []
             vana_nsf_ws = []
             pol = None
@@ -248,17 +304,22 @@ class DNSProcessVanadium(PythonAlgorithm):
             vana_mean_norm = Mean(', '.join(vana_total_norm.getNames()))
             vana_coefs = vana_sf_nsf_sum/vana_mean
             vana_coefs_norm = vana_sf_nsf_sum_norm/vana_mean_norm
-            vana_coefs_total = vana_coefs/vana_coefs_norm
+            vana_coefs_total = vana_coefs/vana_coefs_norm"""
             vana_coefs_dict = {}
 
-            #for coef_ws in vana_coefs:
-            for coef_ws in vana_coefs_total:
-                logger.debug(str(round(coef_ws.getRun().getProperty('deterota').value, 1)))
-                vana_coefs_dict[round(coef_ws.getRun().getProperty('deterota').value, 1)] = coef_ws.getName()
+            for coef_ws in vana_coefs:
+            #for coef_ws in vana_coefs_total:
+                logger.debug(str(coef_ws.getRun().getProperty('deterota').value))
+                deterota.append(coef_ws.getRun().getProperty('deterota').value)
+                vana_coefs_dict[coef_ws.getRun().getProperty('deterota').value] = coef_ws.getName()
 
             for i in range(len(new_sample_table.column(0))):
                 row = new_sample_table.row(i)
-                new_sample_table.setCell('vana_coef', i, vana_coefs_dict[round(float(row['deterota']), 1)])
+                angle = float(row['deterota'])
+                for key in deterota:
+                    if np.fabs(angle - key) < self.tol:
+                        angle = key
+                new_sample_table.setCell('vana_coef', i, vana_coefs_dict[angle])
                 print(str(row))
 
 

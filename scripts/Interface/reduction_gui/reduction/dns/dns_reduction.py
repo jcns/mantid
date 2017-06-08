@@ -595,6 +595,10 @@ class DNSScriptElement(BaseScriptElement):
         l("        DNSProcessNiCr(NiCrTable=workspaces[files_run]+'_NicrDataTable', SampleTable=sample_table,"
           "                       OutputWorkspaceName=workspaces[files_run], XAxisUnits=xax_str, "
           "                       DetEffiCorrection=str(detEffi), FlippCorrFactor=str(flippFac))")
+        l("        sample_table = mtd[workspaces[files_run]+'_SampleTableNiCrCoef']")
+        l("    DNSProcessSampleData(SampleTable=sample_table,SubtractBackground=str(subInst), "
+          "                         DeteEffiCorrection=str(detEffi), FlippRatioCorrection=str(flippRatio),"
+          "                         OutputWorkspaceName=workspaces[files_run])")
         """l("for run_table in range(len(workspaces)):")
         l("    logger.debug(str(workspaces[run_table]))")
         l("    dataworkspaces = []")

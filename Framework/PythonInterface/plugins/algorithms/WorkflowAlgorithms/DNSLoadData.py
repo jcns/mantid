@@ -136,13 +136,18 @@ class DNSLoadData(PythonAlgorithm):
 
     def _sum_same(self, ws_list, group_list, angle, ws_name):
         old_ws = group_list[angle]
+        if mtd[old_ws].getRun().hasProperty('run_number'):
+            print(mtd[old_ws].getRun().getProperty('run_number').value)
         new_name = old_ws
-        AddSampleLog(old_ws, 'run_number', old_ws)
-        AddSampleLog(ws_name, 'run_number', ws_name)
+        if not mtd[old_ws].getRun().hasProperty('run_number'):
+            AddSampleLog(old_ws, 'run_number', old_ws)
+        if not mtd[ws_name].getRun().hasProperty('run_number'):
+            AddSampleLog(ws_name, 'run_number', ws_name)
         new_ws = MergeRuns([old_ws, ws_name], OutputWorkspace=new_name)
         new_ws.setTitle(old_ws)
         loc = ws_list.index(ws_name)
         ws_list[loc] = old_ws
+        print('ws_list after sum same: ', str(ws_list))
         DeleteWorkspace(ws_name)
 
     def _group_ws(self, ws, deterota):
@@ -160,15 +165,15 @@ class DNSLoadData(PythonAlgorithm):
             logger.debug(str(angle))
             logger.debug(str(flipper))
             logger.debug(str(polarisation))
-            if 'vana' in ws[0] or 'nicr' in ws[0] or 'leer' in ws[0]:
-                for key in deterota:
-                    logger.debug(str(key))
-                    logger.debug(str(angle))
-                    logger.debug(str(np.fabs(angle-key)))
-                    logger.debug(str(self.tol))
-                    logger.debug(str(np.fabs(angle-key) < float(self.tol)))
-                    if np.fabs(angle - key) < self.tol:
-                        angle = key
+            #if 'vana' in ws[0] or 'nicr' in ws[0] or 'leer' in ws[0]:
+            for key in deterota:
+                logger.debug(str(key))
+                logger.debug(str(angle))
+                logger.debug(str(np.fabs(angle-key)))
+                logger.debug(str(self.tol))
+                logger.debug(str(np.fabs(angle-key) < float(self.tol)))
+                if np.fabs(angle - key) < self.tol:
+                    angle = key
             logger.debug(str(angle))
             print(wsname)
             if flipper == 'ON':
