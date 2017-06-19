@@ -84,7 +84,7 @@ class DNSProcessStandardData(PythonAlgorithm):
 
         norm_ratio = {}
         leer_scaled = {}
-        for p in ['_x', '_y', '_z']:
+        """for p in ['_x', '_y', '_z']:
             for flip in ['_sf', '_nsf']:
                 inws = ws_name+'_rawdata'+p+flip+'_group'
                 bkgws = ws_name+'_leer'+p+flip+'_group'
@@ -102,7 +102,7 @@ class DNSProcessStandardData(PythonAlgorithm):
                         #resws = ws_name+'_data'+p+flip+'_group'
                         #Minus(inws,bkgws,OutputWorkspace=resws)
                     else:
-                        CloneWorkspace(inws, ws_name+'_data'+p+flip+'_group')
+                        CloneWorkspace(inws, ws_name+'_data'+p+flip+'_group')"""
 
 
 
