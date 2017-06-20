@@ -41,6 +41,7 @@ class DNSProcessStandardData(PythonAlgorithm):
 
         tables = []
         columnames = {}
+        columgroupname = {}
         ws_name = self.getProperty('OutWorkspaceName').value
         sample = mtd[self.getProperty('SampleTable').value]
         nicr_name = self.getProperty('NiCrTable').value
@@ -57,20 +58,24 @@ class DNSProcessStandardData(PythonAlgorithm):
             print('nicr')
             nicr = mtd[nicr_name]
             tables.append(nicr)
-            columnames[nicr.getName()] = 'Nicr ws'
+            columnames[nicr.getName()] = 'nicr_ws'
+            columgroupname[nicr.getName()] = 'nicr_group_ws'
         if mtd.doesExist(leer_name):
             print('leer')
             leer = mtd[leer_name]
             tables.append(leer)
-            columnames[leer.getName()] = 'Background ws'
+            columnames[leer.getName()] = 'background_ws'
+            columgroupname[leer.getName()] = 'background_group_ws'
         out_table_name = ws_name + '_' + self.getProperty('OutputTable').value
         logger.debug(sample.getName())
 
         tableWs = sample.clone(OutputWorkspace=out_table_name)
         logger.debug(tableWs.getName())
 
-        tableWs.addColumn('str', 'Background ws')
-        tableWs.addColumn('str', 'Nicr ws')
+        tableWs.addColumn('str', 'background_ws')
+        tableWs.addColumn('str', 'background_group_ws')
+        tableWs.addColumn('str', 'nicr_ws')
+        tableWs.addColumn('str', 'nicr_group_ws')
 
         for i in range(len(tableWs.column(0))):
             row_out = tableWs.row(i)
@@ -81,6 +86,7 @@ class DNSProcessStandardData(PythonAlgorithm):
                         if row_out['flipper'] == row['flipper']:
                             if np.abs(float(row_out['deterota'])-float(row['deterota'])) < 0.5:
                                 tableWs.setCell(columnames[t.getName()], i, row['run_title'])
+                                tableWs.setCell(columgroupname[t.getName()], i, row['ws_group'])
 
         norm_ratio = {}
         leer_scaled = {}

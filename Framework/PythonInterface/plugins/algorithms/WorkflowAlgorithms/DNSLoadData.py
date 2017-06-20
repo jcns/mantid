@@ -275,6 +275,7 @@ class DNSLoadData(PythonAlgorithm):
                 except:
                     group_exist = False
                 if group_exist:
+                    AddSampleLog(mtd[gname], LogName='ws_group', LogText=gname)
                     self._extract_norm_workspace(mtd[gname], self._norm)
                     if self._m_and_n:
                         self._merge_and_normalize(gname, self.xax)
@@ -303,7 +304,7 @@ class DNSLoadData(PythonAlgorithm):
             self._load_ws_sample()
         else:
             self._load_ws_standard()
-        logs = ['run_title', 'polarisation', 'flipper', 'deterota']
+        logs = ['run_title', 'polarisation', 'flipper', 'deterota', 'ws_group']
         table_name = self._out_ws_name + '_' + self.getProperty('OutputTable').value
         if self._use_ws:
             logger.debug(str(self._use_ws))

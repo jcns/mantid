@@ -596,9 +596,10 @@ class DNSScriptElement(BaseScriptElement):
           "                       OutputWorkspaceName=workspaces[files_run], XAxisUnits=xax_str, "
           "                       DetEffiCorrection=str(detEffi), FlippCorrFactor=str(flippFac))")
         l("        sample_table = mtd[workspaces[files_run]+'_SampleTableNiCrCoef']")
-        l("    DNSProcessSampleData(SampleTable=sample_table,SubtractBackground=str(subInst), "
+        """l("    DNSProcessSampleData(SampleTable=sample_table,SubtractBackground=str(subInst), "
           "                         DeteEffiCorrection=str(detEffi), FlippRatioCorrection=str(flippRatio),"
           "                         OutputWorkspaceName=workspaces[files_run])")
+        """
         """l("for run_table in range(len(workspaces)):")
         l("    logger.debug(str(workspaces[run_table]))")
         l("    dataworkspaces = []")
@@ -798,7 +799,6 @@ class DNSScriptElement(BaseScriptElement):
         l("        extract_norm_workspace(mtd[gname])")
         l("        print 'first merge and normalize'")
         l("        merge_and_normalize(gname)")"""
-        l()
         """l("    for var in ['rawdata_x', 'rawdata_y', 'rawdata_z', 'rawvana_x', 'rawvana_y', 'rawvana_z',
          'rawnicr_x', 'rawnicr_y',  'rawnicr_z']:")
         l("        data_wname_sf = out_ws + '_' + var + '_sf' + '_group'")
