@@ -1,9 +1,12 @@
 from __future__ import (absolute_import, division, print_function)
 
-from mantid.api import PythonAlgorithm, AlgorithmFactory, ITableWorkspace, mtd
+from mantid.api import PythonAlgorithm, AlgorithmFactory, mtd
 from mantid.kernel import logger
-from mantid.simpleapi import LoadEmptyInstrument,GroupWorkspaces, DeleteWorkspace, Divide, Multiply, Minus, \
-    CloneWorkspace, DNSMergeRuns, Scale
+from mantid.simpleapi import LoadEmptyInstrument, DeleteWorkspace, Divide, Multiply, Minus, \
+    CloneWorkspace, DNSMergeRuns, Scale, AddSampleLog
+
+import numpy as np
+
 
 class DNSProcessNiCr(PythonAlgorithm):
 
@@ -24,18 +27,20 @@ class DNSProcessNiCr(PythonAlgorithm):
         return "Workflow\\MLZ\\DNS"
 
     def PyInit(self):
-        self.declareProperty(name='NiCrTable', defaultValue='')
-        self.declareProperty(name='SampleTable', defaultValue='')
-        self.declareProperty(name='OutputWorkspaceName', defaultValue='')
-        self.declareProperty(name='XAxisUnits', defaultValue='')
-        self.declareProperty(name='DetEffiCorrection', defaultValue='')
-        self.declareProperty(name='FlippCorrFactor', defaultValue='')
+        self.declareProperty(name='NiCrTable', defaultValue='', doc='Name of the nickel-chrome ITableWorkspace')
+        self.declareProperty(name='SampleTable', defaultValue='', doc='Name of the sample data ITableWorkspace')
+        self.declareProperty(name='OutputWorkspace', defaultValue='', doc='Name of the output workspace')
+        self.declareProperty(name='XAxisUnits', defaultValue='', doc='List of the output x axis units')
+        self.declareProperty(name='DetEffiCorrection', defaultValue='',
+                             doc='Bool, true if the detector efficiency should be corrected')
+        self.declareProperty(name='FlippCorrFactor', defaultValue='',
+                             doc='Factor for the flipping ratio correction')
 
     def PyExec(self):
 
         self.nicr_table = mtd[self.getProperty('NiCrTable').value]
         self.sample_table = mtd[self.getProperty('SampleTable').value]
-        self.out_ws_name = self.getProperty('OutputWorkspaceName').value
+        self.out_ws_name = self.getProperty('OutputWorkspace').value
         self.xax = self.getProperty('XAxisUnits').value
         self.detEffi = self.getProperty('DetEffiCorrection').value
         self.flippFac = self.getProperty('FlippCorrFactor').value
@@ -45,87 +50,95 @@ class DNSProcessNiCr(PythonAlgorithm):
         DeleteWorkspace(tmp)
 
         self.suff_norm = self.instrument.getStringParameter('normws_suffix')[0]
+        self.tol = float(self.instrument.getStringParameter('two_theta_tolerance')[0])
 
         logger.debug(self.nicr_table.getName())
         logger.debug(self.sample_table.getName())
 
         new_sample_table = self.sample_table.clone(OutputWorkspace=self.out_ws_name+'_SampleTableNiCrCoef')
         new_sample_table.addColumn('str', 'nicr_coef')
+        new_sample_table.addColumn('str', 'nicr_coef_group')
 
-        """for p in ['_x', '_y', '_z']:
-            for flipp in ['_sf', '_nsf']:
-                wname = self.out_ws_name+'_rawnicr'+p+flipp+'_group'
-                norm_ratio = Divide(wname+self.suff_norm, self.out_ws_name+'_leer'+p+flipp+'_group'+self.suff_norm,
-                                    OutputWorkspace=self.out_ws_name+'_rawnicr'+p+flipp+'_nratio')
-                leer_scaled = Multiply(self.out_ws_name+'_leer'+p+flipp+'_group', norm_ratio,
-                                       OutputWorkspace=self.out_ws_name+'_leer'+p+flipp+'_rawnicr')
-                Minus(wname, leer_scaled, OutputWorkspace=self.out_ws_name+'_nicr'+p+flipp+'_group')
-                CloneWorkspace(wname+self.suff_norm,
-                               OutputWorkspace=self.out_ws_name+'_nicr'+p+flipp+'_group'+self.suff_norm)
-                self._merge_and_normalize(self.out_ws_name+'_nicr'+p+flipp+'_group', self.xax)
+        self.offset = 0
+        gr1 = self.nicr_table.cell('ws_group', 0)
+        gr2 = self.nicr_table.cell('ws_group', self.offset)
 
-        coefs_norm = {}
+        while gr1 == gr2:
+            self.offset += 1
+            gr2 = self.nicr_table.cell('ws_group', self.offset)
 
-        nicr_ratio_x = Divide(self.out_ws_name+'_nicr_x_nsf'+'_group'+self.suff_norm,
-                            self.out_ws_name+'_nicr_x_sf'+'_group'+self.suff_norm,
-                            OutputWorkspace=self.out_ws_name+'_nicr_x_nsf_scaled')
-        nicr_coefs_norm_x = Multiply(self.out_ws_name+'_nicr_x_sf_group', nicr_ratio_x,
-                                   OutputWorkspace=self.out_ws_name+'_nicr_x_sf_scaled')
-        nicr_coefs_x = Minus(self.out_ws_name+'_nicr_x_nsf_group', nicr_coefs_norm_x)
-        nicr_coefs_normalized_x = nicr_coefs_x/nicr_coefs_norm_x
-        coefs_norm['x'] = nicr_coefs_normalized_x
+        row = 0
+        nicr_coefs_dict = {}
 
-        nicr_ratio_y = Divide(self.out_ws_name+'_nicr_y_nsf'+'_group'+self.suff_norm,
-                            self.out_ws_name+'_nicr_y_sf'+'_group'+self.suff_norm,
-                            OutputWorkspace=self.out_ws_name+'_nicr_y_nsf_scaled')
-        nicr_coefs_norm_y = Multiply(self.out_ws_name+'_nicr_y_sf_group', nicr_ratio_y,
-                                   OutputWorkspace=self.out_ws_name+'_nicr_y_sf_scaled')
-        nicr_coefs_y = Minus(self.out_ws_name+'_nicr_y_nsf_group', nicr_coefs_norm_y)
-        nicr_coefs_normalized_y = nicr_coefs_y/nicr_coefs_norm_y
-        coefs_norm['y'] = nicr_coefs_normalized_y
+        while row < self.nicr_table.rowCount():
 
-        nicr_ratio_z = Divide(self.out_ws_name+'_nicr_z_nsf'+'_group'+self.suff_norm,
-                            self.out_ws_name+'_nicr_z_sf'+'_group'+self.suff_norm,
-                            OutputWorkspace=self.out_ws_name+'_nicr_z_nsf_scaled')
-        nicr_coefs_norm_z = Multiply(self.out_ws_name+'_nicr_z_sf_group', nicr_ratio_z,
-                                   OutputWorkspace=self.out_ws_name+'_nicr_z_sf_scaled')
-        nicr_coefs_z = Minus(self.out_ws_name+'_nicr_z_nsf_group', nicr_coefs_norm_z)
-        nicr_coefs_normalized_z = nicr_coefs_z/nicr_coefs_norm_z
-        coefs_norm['z'] = nicr_coefs_normalized_z"""
+            pol = self.nicr_table.cell('polarisation', row)
+            nicr_group_sf = self.nicr_table.cell('ws_group', row)
+            bkg_group_sf = nicr_group_sf.replace('rawnicr', 'leer')
 
-        coefs_norm = {}
+            logger.debug('nicr group: ' + nicr_group_sf + ', bkg group: ' + bkg_group_sf + ', pol: ' + pol)
 
-        for p in ['_x', '_y', '_z']:
-            for flipp in ['_sf', '_nsf']:
-                nicr_ws = self.out_ws_name+'_rawnicr'+p+flipp+'_group'
-                bkg_ws = self.out_ws_name+'_leer'+p+flipp+'_group'
-                Minus(nicr_ws, bkg_ws, OutputWorkspace=self.out_ws_name+'_nicr'+p+flipp+'_group')
+            row += self.offset
 
-        for p in ['_x', '_y', '_z']:
-            nicr_coef_first = Divide(self.out_ws_name+'_nicr'+p+'_nsf_group', self.out_ws_name+'_nicr'+p+'_sf_group',
-                               OutputWorkspace=self.out_ws_name+'_nicr_coef'+p+'_first')
-            nicr_scaled = Scale(nicr_coef_first, OutputWorkspace=self.out_ws_name+'_nicr_coef'+p+'_scaled',
-                                Factor=self.flippFac, Operation='Multiply')
-            nicr_coef = Scale(nicr_scaled, OutputWorkspace=self.out_ws_name+'_nicr_coef'+p,
-                                Factor=-1.0, Operation='Add')
+            nicr_group_nsf = self.nicr_table.cell('ws_group', row)
+            bkg_group_nsf = nicr_group_nsf.replace('rawnicr', 'leer')
 
-            #for ws in nicr_coef:
-            #    print(str(ws.readX(0)))
-            #    MultiplyRange(ws, StartBin=0, EndBin=len(ws.readY(0))-1, Factor=self.flippFac)
+            logger.debug('nicr group: ' + nicr_group_nsf + ', bkg group: ' + bkg_group_nsf + ', pol: ' + pol)
 
-            coefs_norm[p[1:]] = nicr_coef
+            row += self.offset
 
-        for coef in coefs_norm:
-            deterota_dict = {}
-            for ws in coefs_norm[coef]:
-                deterota_dict[round(ws.getRun().getProperty('deterota').value-0.5)] = ws.getName()
-            coefs_norm[coef] = deterota_dict
+            norm_ratio_sf = Divide(nicr_group_sf+self.suff_norm, bkg_group_sf+self.suff_norm,
+                                   OutputWorkspace=nicr_group_sf+'_nratio')
+            norm_ratio_nsf = Divide(nicr_group_nsf+self.suff_norm, bkg_group_nsf+self.suff_norm,
+                                    OutputWorkspace=nicr_group_nsf+'_nratio')
 
-        print(str(coefs_norm))
+            leer_scaled_sf = Multiply(bkg_group_sf, norm_ratio_sf,
+                                      OutputWorkspace=bkg_group_sf.replace('group', 'nicr'))
+            leer_scaled_nsf = Multiply(bkg_group_nsf, norm_ratio_nsf,
+                                       OutputWorkspace=bkg_group_nsf.replace('group', 'nicr'))
 
-        for i in range(len(new_sample_table)):
+            Minus(nicr_group_sf, leer_scaled_sf, OutputWorkspace=nicr_group_sf.replace('raw', ''))
+            CloneWorkspace(nicr_group_sf+self.suff_norm,
+                           OutputWorkspace=nicr_group_sf.replace('raw', '')+self.suff_norm)
+
+            Minus(nicr_group_nsf, leer_scaled_nsf, OutputWorkspace=nicr_group_nsf.replace('raw', ''))
+            CloneWorkspace(nicr_group_nsf+self.suff_norm,
+                           OutputWorkspace=nicr_group_nsf.replace('raw', '')+self.suff_norm)
+
+            nicr_group_sf = nicr_group_sf.replace('raw', '')
+            nicr_group_nsf = nicr_group_nsf.replace('raw', '')
+
+            self._merge_and_normalize(nicr_group_sf, self.xax)
+            self._merge_and_normalize(nicr_group_nsf, self.xax)
+
+            nicr_nratio = Divide(nicr_group_nsf+self.suff_norm, nicr_group_sf+self.suff_norm,
+                                 OutputWorkspace=nicr_group_nsf.replace('group', 'nratio'))
+            nicr_coefs_norm = Multiply(nicr_group_sf, nicr_nratio,
+                                       OutputWorkspace=nicr_group_sf.replace('group', 'scaled'))
+
+            nicr_coefs = Minus(nicr_group_nsf, nicr_coefs_norm, OutputWorkspace='nicr_coefs_'+pol)
+
+            #nicr_coefs_normalized = nicr_coefs/nicr_coefs_norm
+            nicr_coefs_normalized = Divide(nicr_coefs, nicr_coefs_norm, OutputWorkspace='nicr_coefs_normalized_'+pol)
+            AddSampleLog(nicr_coefs_normalized, LogName='ws_group', LogText=nicr_coefs_normalized.getName())
+            dete_dict = {}
+
+            for coefs_ws in nicr_coefs_normalized:
+                logger.debug(str(coefs_ws.getRun().getProperty('deterota').value))
+                dete_dict[coefs_ws.getRun().getProperty('deterota').value] = coefs_ws.getName()
+
+            nicr_coefs_dict[pol] = dete_dict
+
+        for i in range(new_sample_table.rowCount()):
             row = new_sample_table.row(i)
-            new_sample_table.setCell('nicr_coef', i,
-                                     coefs_norm[row['polarisation']][round(float(row['deterota'])-0.05)])
+            pol = row['polarisation']
+            angle = float(row['deterota'])
+            for key in nicr_coefs_dict[pol].keys():
+                if np.fabs(angle - key) < self.tol:
+                    angle = key
+            new_sample_table.setCell('nicr_coef', i, nicr_coefs_dict[pol][angle])
+            new_sample_table.setCell('nicr_coef_group', i,
+                                     mtd[nicr_coefs_dict[pol][angle]].getRun().getProperty('ws_group').value)
+            print(str(row))
 
 AlgorithmFactory.subscribe(DNSProcessNiCr)
