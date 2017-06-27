@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function)
 from mantid.api import PythonAlgorithm, AlgorithmFactory, mtd
 from mantid.kernel import logger
 from mantid.simpleapi import Divide, Multiply, Minus, CloneWorkspace, Plus, \
-    LoadEmptyInstrument, DeleteWorkspace, DNSMergeRuns, Scale
+    LoadEmptyInstrument, DeleteWorkspace, DNSMergeRuns, Scale, GroupWorkspaces
 
 import numpy as np
 
@@ -25,14 +25,14 @@ class DNSProcessSampleData(PythonAlgorithm):
                 norm_merged.setX(0, dataX[0])
                 Divide(data_merged, norm_merged, OutputWorkspace=wsgroup+'_m' + '_' + x)
 
-    def _save_to_file(self, fsuffix, axis_suffix, flipp='', pol=''):
+    def _save_to_file(self, fsuffix, axis_suffix, out_ws_name='', flipp='', pol='', filename=''):
         axis_dict = {'|Q|': 'Q[A-1]', 'd-Spacing': 'd[A]', '2theta': 'theta[degree]'}
         xarrays = []
         xs = 0
         header = ''
-        ws1 = mtd[self.out_ws_name+fsuffix+axis_suffix.split(', ')[0]]
+        ws1 = mtd[out_ws_name+fsuffix+axis_suffix.split(', ')[0]]
         for x in axis_suffix.split(', '):
-            ws = mtd[self.out_ws_name+fsuffix+x]
+            ws = mtd[out_ws_name+fsuffix+x]
             print(x)
             xarrays.append(np.array(ws.extractX()[0]))
             if x != '2theta':
@@ -43,7 +43,7 @@ class DNSProcessSampleData(PythonAlgorithm):
         y = np.array(ws1.extractY()[0])
         err = np.array(ws1.extractE()[0])
         header += 'I\t\tError'
-        fname = os.path.join(self.out_file_directory, self.out_file_prefix+pol+flipp+'.txt')
+        fname = os.path.join(self.out_file_directory, self.out_file_prefix+filename+pol+flipp+'.txt')
         xarrays.append(y)
         xarrays.append(err)
         np.savetxt(fname, np.transpose(xarrays), fmt='%1.4e', delimiter='\t', header=header, newline=os.linesep)
@@ -140,9 +140,9 @@ class DNSProcessSampleData(PythonAlgorithm):
                 self._merge_and_normalize(data_group_sf, self.xax)
                 self._merge_and_normalize(data_group_nsf, self.xax)
 
-            if detEffi:
+            if detEffi == 'True':
                 end_name = 'vcorr_'
-            elif flippRatio:
+            elif flippRatio == 'True':
                 end_name = 'fcorr_'
             else:
                 end_name = ''
@@ -155,8 +155,10 @@ class DNSProcessSampleData(PythonAlgorithm):
                 polarisations.append(pol)
 
                 data_group_sf = sample_table.cell('ws_group', row)
-                vana_coefs_total = sample_table.cell('vana_coef_group', row)
-                nicr_coef_normalized = sample_table.cell('nicr_coef_group', row)
+                if detEffi == 'True':
+                    vana_coefs_total = sample_table.cell('vana_coef_group', row)
+                if flippRatio == 'True':
+                    nicr_coef_normalized = sample_table.cell('nicr_coef_group', row)
 
                 data_group_sf = data_group_sf.replace('raw', '')
 
@@ -194,8 +196,15 @@ class DNSProcessSampleData(PythonAlgorithm):
                                OutputWorkspace=data_group_nsf.replace('group', 'vcorr_m_'+x))
                 else:
 
-                    data_sf_norm = mtd[data_group_sf+self.suff_norm]
-                    data_nsf_norm = mtd[data_group_nsf+self.suff_norm]
+                    data_sf_norm = CloneWorkspace(data_group_sf+self.suff_norm,
+                                                  OutputWorkspace=data_group_sf.replace('group',
+                                                                                        'vcorr'+self.suff_norm))
+                    data_nsf_norm = CloneWorkspace(data_group_nsf+self.suff_norm,
+                                                  OutputWorkspace=data_group_nsf.replace('group',
+                                                                                         'vcorr'+self.suff_norm))
+                    self._merge_and_normalize(data_sf_norm, self.xax)
+                    self._merge_and_normalize(data_nsf_norm, self.xax)
+
 
                 if flippRatio == "True":
                     print(bool(flippRatio))
@@ -225,29 +234,71 @@ class DNSProcessSampleData(PythonAlgorithm):
                                                         OutputWorkspace=data_group_sf.replace(
                                                             'group','fcorr'+self.suff_norm))
 
-                    self._merge_and_normalize(data_nsf_fcorr.getName(), self.xax)
-                    self._merge_and_normalize(data_sf_fcorr.getName(), self.xax)
-
                 else:
+                    
+                    data_nratio = Divide(data_nsf_norm, data_sf_norm,
+                                         OutputWorkspace=self.out_ws_name+'_data_'+pol+'_nratio')
+                    data_nsf_fcorr = CloneWorkspace(data_group_nsf,
+                                                    OutputWorkspace=data_group_nsf.replace('group', 'fcorr'))
+                    data_sf_fcorr = CloneWorkspace(data_group_sf,
+                                                   OutputWorkspace=data_group_nsf.replace('group', 'fcorr'))
 
+                self._merge_and_normalize(data_nsf_fcorr.getName(), self.xax)
+                self._merge_and_normalize(data_sf_fcorr.getName(), self.xax)
 
                 if self.sampleParameters["Type"] == 'Polycrystal/Amorphous':
                     print("Polycrystal")
-                    if self.sampleParameters['Separation'] == "XYZ":
+                    if self.sampleParameters['Separation'] == "Coherent/Incoherent":
                         print('XYZ')
+                        outws_group = []
                         for x in self.xax.split(', '):
                             print('xax: ', x)
                             spin_incoh = Scale(self.out_ws_name + '_data_' + pol + '_sf_' + end_name + 'm_' + x,
                                                Factor=1.5,
                                                Operation='Multiply',
-                                               OutputWorkspace=self.out_ws_name + '_spin_incoh_' + pol + '_' + x)
-                            step1first = Scale(self.out_ws_name+'_data_'+pol+'_sf_'+end_name+'m_'+x, Factor=0.5,
-                                               Operation='Multiply')
+                                               OutputWorkspace=self.out_ws_name + '_spin_incoh_' + pol+ '_' + x)
+                            step1 = 0.5*data_sf_fcorr*data_nratio
+                            #step1first = Scale(self.out_ws_name+'_data_'+pol+'_sf_'+end_name+'m_'+x, Factor=0.5,
+                            #                   Operation='Multiply')
+                            #step1 = Multiply(step1first, self.out_ws_name+'_data_'+pol+'_nratio',
+                            #                 OutputWorkspace=self.out_ws_name+'_coh_step1_'+pol+'_'+x)
+                            #coh_group = Minus(self.out_ws_name+'_data_'+pol+'_nsf_'+end_name+'m_'+x, step1,
+                            #                  OutputWorkspace='coh_group_'+pol+'_'+x)
+                            coh_group = data_nsf_fcorr-step1
+                            CloneWorkspace(coh_group, OutputWorkspace='coh_group_'+pol+'_'+x)
+                            DeleteWorkspace(coh_group)
+                            nuclear_coh_merged = DNSMergeRuns('coh_group_'+pol+'_'+x, x,
+                                                              OutputWorkspace='nuclear_coh_merged_'+pol+'_'+x)
+                            nuclear_coh = Divide(nuclear_coh_merged,
+                                                 self.out_ws_name+'_data_'+pol+'_nsf_'+end_name + 'm_' + x,
+                                                 OutputWorkspace='nuclear_coh_'+pol+'_'+x)
+                            outws = Divide(nuclear_coh, spin_incoh,
+                                           OutputWorkspace=self.out_ws_name+'_ratio_'+pol+'_'+x)
+                            outws_group.append(outws)
+                        GroupWorkspaces(outws_group, OutputWorkspace=self.out_ws_name+'_ratio_'+pol)
+
+                        if self.out_file_directory:
+                            self._save_to_file('nuclear_coh_'+pol+'_', self.xax, pol='_'+pol, filename='_coh')
+                            self._save_to_file('_spin_incoh_'+pol+'_', self.xax, out_ws_name=self.out_ws_name,
+                                               pol='_'+pol, filename='_incoh')
+                            self._save_to_file('_ratio_'+pol+'_', self.xax, out_ws_name=self.out_ws_name,
+                                               pol='_'+pol, filename='_ratio')
+
+            if self.sampleParameters['Type'] == 'Polycrystal/Amorphous':
+                if self.sampleParameters['Separation'] == 'XYZ':
+                    for x in self.xax.split(', '):
+                        xsf = mtd[self.out_ws_name+'_data_x_sf_'+end_name+'m_'+x]
+                        ysf = mtd[self.out_ws_name+'_data_y_sf_'+end_name+'m_'+x]
+                        zsf = mtd[self.out_ws_name+'_data_z_sf_'+end_name+'m_'+x]
+                        znsf = mtd[self.out_ws_name+'_data_z_nsf_'+end_name+'m_'+x]
+
 
             if self.out_file_directory:
                 for pol in polarisations:
-                    self._save_to_file('_data_'+pol+'_sf_'+end_name+'m_', self.xax, flipp='_sf', pol='_'+pol)
-                    self._save_to_file('_data_'+pol+'_nsf_'+end_name+'m_', self.xax, flipp='_nsf', pol='_'+pol)
+                    self._save_to_file('_data_'+pol+'_sf_'+end_name+'m_', self.xax, out_ws_name=self.out_ws_name,
+                                       flipp='_sf', pol='_'+pol)
+                    self._save_to_file('_data_'+pol+'_nsf_'+end_name+'m_', self.xax, out_ws_name=self.out_ws_name,
+                                       flipp='_nsf', pol='_'+pol)
 
 
 
