@@ -2,8 +2,8 @@ from __future__ import (absolute_import, division, print_function)
 
 from mantid.api import PythonAlgorithm, AlgorithmFactory, mtd
 from mantid.kernel import logger
-from mantid.simpleapi import Divide, Multiply, Minus, CloneWorkspace, Plus, \
-    LoadEmptyInstrument, DeleteWorkspace, DNSMergeRuns, Scale, GroupWorkspaces
+from mantid.simpleapi import Divide, Multiply, Minus, CloneWorkspace, Plus, LoadEmptyInstrument, \
+    DeleteWorkspace, DNSMergeRuns, Scale, GroupWorkspaces, RenameWorkspace
 
 import numpy as np
 
@@ -240,11 +240,18 @@ class DNSProcessSampleData(PythonAlgorithm):
                                          OutputWorkspace=self.out_ws_name+'_data_'+pol+'_nratio')
                     data_nsf_fcorr = CloneWorkspace(data_group_nsf,
                                                     OutputWorkspace=data_group_nsf.replace('group', 'fcorr'))
-                    data_sf_fcorr = CloneWorkspace(data_group_sf,
-                                                   OutputWorkspace=data_group_nsf.replace('group', 'fcorr'))
+                    data_nsf_fcorr_norm = CloneWorkspace(data_nsf_norm.getName(),
+                                                         OutputWorkspace=data_group_nsf.replace(
+                                                             'group','fcorr'+self.suff_norm))
 
-                self._merge_and_normalize(data_nsf_fcorr.getName(), self.xax)
+                    data_sf_fcorr = CloneWorkspace(data_group_sf,
+                                                   OutputWorkspace=data_group_sf.replace('group', 'fcorr'))
+                    data_sf_fcorr_norm = CloneWorkspace(data_sf_norm.getName(),
+                                                        OutputWorkspace=data_group_sf.replace(
+                                                            'group','fcorr'+self.suff_norm))
+
                 self._merge_and_normalize(data_sf_fcorr.getName(), self.xax)
+                self._merge_and_normalize(data_nsf_fcorr.getName() , self.xax)
 
                 if self.sampleParameters["Type"] == 'Polycrystal/Amorphous':
                     print("Polycrystal")
@@ -291,6 +298,18 @@ class DNSProcessSampleData(PythonAlgorithm):
                         ysf = mtd[self.out_ws_name+'_data_y_sf_'+end_name+'m_'+x]
                         zsf = mtd[self.out_ws_name+'_data_z_sf_'+end_name+'m_'+x]
                         znsf = mtd[self.out_ws_name+'_data_z_nsf_'+end_name+'m_'+x]
+                        magnetic = 2.0*(xsf + ysf - 2.0*zsf)
+                        spin_incoh = (3/2)*(3.0*zsf - xsf - ysf)
+                        nuclear_coh = znsf - (1/2)*magnetic - (1/3)*spin_incoh
+                        for wname in ['magnetic', 'spin_incoh', 'nuclear_coh']:
+                            RenameWorkspace(wname, self.out_ws_name+'_'+wname+'_'+x)
+
+                    if self.out_file_directory:
+                        self._save_to_file('_magnetic_', self.xax, out_ws_name=self.out_ws_name, filename='_magnetic')
+                        self._save_to_file('_spin_incoh_', self.xax, out_ws_name=self.out_ws_name, filename='_incoh')
+                        self._save_to_file('_nuclear_coh_', self.xax, out_ws_name=self.out_ws_name, filename='_coh')
+
+            # TODO: Change caluclations with in fors to this
 
 
             if self.out_file_directory:

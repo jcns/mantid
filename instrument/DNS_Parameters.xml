@@ -62,7 +62,7 @@
                         <value val="duration, mon_sum" />
                 </parameter>
 
-                <parameter name="sample_logs_time_series" type="string">
+                <parameter name="sample_logs_time_series" type="float">
                         <value val="T1, T2, Tsp" />
                 </parameter>
 

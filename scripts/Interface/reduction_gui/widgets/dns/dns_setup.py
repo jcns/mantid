@@ -34,6 +34,10 @@ class DNSSetupWidget(BaseWidget):
                 else:
                     break
 
+        def _ensureHasRows(self, numRows):
+            while self._get_row_numbers() < numRows:
+                self.dataRuns.append(('', '', ''))
+
         def _set_num_rows(self, numRows):
             while self._get_row_numbers() < numRows:
                 self.tableData.append(('', '', ''))
@@ -57,6 +61,25 @@ class DNSSetupWidget(BaseWidget):
 
         headers = ('Run numbers', 'Output Workspace', 'Comment')
         selectCell = pyqtSignal(int, int)
+
+        def removeCell(self, index):
+
+            row = index.row()
+            col = index.column()
+
+            self._set_cell(row, col, text='')
+            self._remove_trailing_empty_rows()
+
+            self.reset()
+
+            col = col - 1
+
+            if col < 0:
+                row = row -1
+                col = 0
+
+            row = max(row, 0)
+            self.selectCell.emit(row, col)
 
         def rowCount(self, _=QModelIndex()):
             return self._get_row_numbers() + 1
@@ -156,6 +179,25 @@ class DNSSetupWidget(BaseWidget):
         headers = ('Min Angle[\305]', 'Max Angle[\305]')
         selectCell = pyqtSignal(int, int)
 
+        def removeCell(self, index):
+
+            row = index.row()
+            col = index.column()
+
+            self._set_cell(row, col, text='')
+            self._removeTrailingEmptyRows()
+
+            self.reset()
+
+            col = col - 1
+
+            if col < 0:
+                row = row -1
+                col = 0
+
+            row = max(row, 0)
+            self.selectCell.emit(row, col)
+
         def row_no_min_angle(self):
             for i in range(len(self.tableData)):
                 if self._has_no_min_angle(i):
@@ -208,6 +250,18 @@ class DNSSetupWidget(BaseWidget):
 
         def flags(self, _):
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
+
+    class TableViews(QTableView):
+
+        def keyPressEvent(self, QKeyEvent):
+            if QKeyEvent.key() == Qt.Key_Delete or QKeyEvent.key() == Qt.Key_Backspace:
+                index = self.selectedIndexes()
+                model = self.model()
+                for i in index:
+                    model.removeCell(i)
+            else:
+                QTableView.keyPressEvent(self, QKeyEvent)
+
 
     TIP_sampleDataPath = ''
     TIP_btnSampleDataPath = ''
@@ -284,14 +338,14 @@ class DNSSetupWidget(BaseWidget):
         self.sampleFilePre = tip(QLineEdit(), self.TIP_sampleFilePre)
         self.sampleFileSuff = tip(QLineEdit(), self.TIP_sampleFileSuff)
 
-        self.runsView = tip(QTableView(self), self.TIP_runsView)
+        self.runsView = tip(self.TableViews(self), self.TIP_runsView)
         self.runsView.horizontalHeader().setResizeMode(QHeaderView.Stretch)
         self.runsView.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         self.runNumbersModel = DNSSetupWidget.DataTable(self)
         self.runsView.setModel(self.runNumbersModel)
 
-        self.maskAngleView = tip(QTableView(self), self.TIP_maskAngle)
+        self.maskAngleView = tip(self.TableViews(self), self.TIP_maskAngle)
         self.maskAngleView.horizontalHeader().setResizeMode(QHeaderView.Stretch)
         self.maskAngleView.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
