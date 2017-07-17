@@ -265,7 +265,7 @@ class DNSScriptElement(BaseScriptElement):
                 stop = int(stop)
                 for i in range(start, stop+1):
                     for f in os.listdir(path):
-                        if re.match(r"{}0*{}{}.d_dat".format(prefix, int(i), suffix), f):
+                        if re.match(r"{}0*{}{}.d_dat$".format(prefix, int(i), suffix), f):
                             found = True
                             fs.append(str(f))
                     if not found:
@@ -275,6 +275,7 @@ class DNSScriptElement(BaseScriptElement):
             else:
                 for f in os.listdir(path):
                     if re.match(r"{}0*{}{}.d_dat".format(prefix, int(run_number), suffix), f):
+                        print('append ',f)
                         found = True
                         fs.append(str(f))
                 if not found:
@@ -353,7 +354,7 @@ class DNSScriptElement(BaseScriptElement):
                 subInstFilename = instrument.getStringParameter("bkg")[0]
                 found = self._search_file(self.standardDataPath, subInstFilename)
                 if not found:
-                    self.error('no file to substract of instrument background for sample in '
+                    self.error('no file to subtract of instrument background for sample in '
                                + str(self.standardDataPath) + ' found')
             if self.flippRatio:
                 flippRatioFilename = instrument.getStringParameter("nicr")[0]
@@ -382,24 +383,24 @@ class DNSScriptElement(BaseScriptElement):
             workspaces.append(str(outWs))
             _files.append(self._search_fs(self.sampleDataPath, self.filePrefix, self.fileSuffix, runNumber))
             comments.append(str(comment))
-            run["Run numbers"] = runNumber
-            run["Output Workspace"] = outWs
-            run["Comment"] = comment
-            string = "Runs in row: " + str(i)
-            runs[string] = run
 
-        sampleData['Data Table'] = runs
+        sampleData['Data Table workspaces'] = workspaces
+        sampleData['Data Table files'] = _files
+        sampleData['Data Table comments'] = comments
 
         parameters['Sample Data'] = sampleData
 
+        minAngles = []
+        maxAngles = []
         maskDet = OrderedDict()
         for i in range(len(self.maskAngles)):
             mask = OrderedDict()
             (minA, maxA) = self.maskAngles[i]
-            mask['Min Angle'] = minA
-            mask['Max Angle'] = maxA
-            string = "Angles row: " + str(i)
-            maskDet[string] = mask
+            minAngles.append(minA)
+            maxAngles.append(maxA)
+
+        maskDet['Min angles'] = minAngles
+        maskDet['Max angles'] = maxAngles
 
         parameters['Mask Detectors'] = maskDet
 
@@ -422,9 +423,9 @@ class DNSScriptElement(BaseScriptElement):
 
         datRedSettings['Detector efficiency correction'] = str(self.detEffi)
         datRedSettings['Sum Vandium over detector position'] = str(self.sumVan)
-        datRedSettings['Substract instrument background for sample'] = str(self.subInst)
+        datRedSettings['Subtract instrument background for sample'] = str(self.subInst)
         if self.subInst:
-            datRedSettings['Substract factor'] = self.subFac
+            datRedSettings['Subtract factor'] = self.subFac
         datRedSettings['Flipping ratio correction'] = str(self.flippRatio)
         if self.flippRatio:
             datRedSettings['Flipping ratio factor'] = self.flippFac
@@ -477,22 +478,14 @@ class DNSScriptElement(BaseScriptElement):
             type['Lattice parameters'] = lattice
 
             scatter = {}
-            u = []
-            u.append(self.scatterU1)
-            u.append(self.scatterU2)
-            u.append(self.scatterU3)
-            v = []
-            v.append(self.scatterV1)
-            v.append(self.scatterV2)
-            v.append(self.scatterV3)
+            u = str(self.scatterU1) + ', ' + str(self.scatterU2) + ', ' + str(self.scatterU3)
+            v = str(self.scatterV1) + ', ' + str(self.scatterV2) + ', ' + str(self.scatterV3)
             scatter['u'] = u
             scatter['v'] = v
 
             type['Scattering Plane'] = scatter
 
         parameters['Sample'] = type
-
-        print(str(parameters))
 
         script = ['']
 
@@ -516,17 +509,42 @@ class DNSScriptElement(BaseScriptElement):
         l("prefix = '{}'".format(parameters['Sample Data']['File prefix']))
         l("suffix = '{}'".format(parameters['Sample Data']['File suffix']))
         l("files = {}".format(_files))
+        print(_files)
         l("workspaces = {}".format(workspaces))
         l("comments = {}".format(comments))
-        l("xax = {}".format(parameters['Sample']['Abscissa']))
+        if self.out == self.OUT_POLY_AMOR:
+            l("xax = {}".format(parameters['Sample']['Abscissa']))
+        else:
+            l("xax = ['|Q|']")
         l("flipper_bool = {}".format(parameters['Data reduction settings']['Flipping ratio correction']))
         l()
         l("parametersSample = {}".format(dict(parameters['Sample'])))
+        l()
+        l("wavelength = '{}'".format(parameters['Data reduction settings']['Neutron wavelength']))
+        l("if float(wavelength):")
+        l("    dataX = np.zeros(2)")
+        l("    dataX.fill(float(wavelength) + 0.00001)")
+        l("    dataX[::2] -= 0.000002")
+        l("else:")
+        l("    dataX = []")
+        l("dataX = [str(x) for x in dataX]")
+        l("dataX_str = ', '.join(dataX)")
+        l("maskAngles = {}".format(self.maskAngles))
+        l("maskAngles = [str(angle) for angle in maskAngles]")
+        l("maskAnglesStr = '; '.join(maskAngles)")
+        if self.out == self.OUT_SINGLE_CRYST:
+            l("singleCrystal = 'True'")
+        else:
+            l("singleCrystal = 'False'")
         if self.flippRatio:
-            l("flippFac = {}".format(parameters['Data reduction settings']['Flipping ratio factor']))
+            l("flippFac = '{}'".format(parameters['Data reduction settings']['Flipping ratio factor']))
         l("detEffi = {}".format(self.detEffi))
         l("flippRatio = {}".format(self.flippRatio))
         l("subInst = {}".format(self.subInst))
+        if self.subInst:
+            l("subInstFac = '{}'".format(parameters['Data reduction settings']['Subtract factor']))
+        else:
+            l("subInstFac = ''")
         l("norm = '{}'".format(parameters['Data reduction settings']['Normalization']))
         l("stdpath = '{}'".format(parameters['Standard Data']['Path']))
         l("saveToFile = {}".format(parameters['Save']['Save to file?']))
@@ -534,34 +552,35 @@ class DNSScriptElement(BaseScriptElement):
             l("filePrefix = '{}'".format(parameters['Save']['Output file prefix']))
             l("fileDirectory = '{}'".format(parameters['Save']['Output directory']))
         l()
-        l("logger.debug(str(files))")
         l("for files_run in range(len(files)):")
         l("    files_run_str = ', '.join(files[files_run])")
-        l("    logger.debug(files_run_str)")
-        l("    logger.debug(str(parametersSample))")
+        l("    print(files_run_str)")
         l("    xax_str = ', '.join(xax)")
-        l("    logger.debug(xax_str)")
         l("    DNSLoadData(FilesList=files_run_str, DataPath=datapath, OutputWorkspace=workspaces[files_run],"
-          "                OutputTable='SampleDataTable', XAxisUnit=xax_str, Normalization=norm)")
+          "                OutputTable='SampleDataTable', XAxisUnit=xax_str, Normalization=norm,"
+          "                Wavelength=wavelength, DataX = dataX_str, MaskAngles=maskAnglesStr,"
+          "                SampleParameters=str(parametersSample), SingleCrystal=singleCrystal)")
         l("    sample_table = mtd[workspaces[files_run]+'_SampleDataTable']")
         l("    if detEffi:")
         l("        DNSLoadData(StandardType='vana', RefWorkspaces=sample_table, DataPath=stdpath, "
           "                    OutputWorkspace=workspaces[files_run], OutputTable='VanaDataTable',"
-          "                    XAxisUnit=xax_str, Normalization=norm)")
+          "                    XAxisUnit=xax_str, Normalization=norm, Wavelength=wavelength, DataX=dataX_str,"
+          "                    MaskAngles=maskAnglesStr)")
         l("    if flippRatio:")
         l("        DNSLoadData(StandardType='nicr', RefWorkspaces=sample_table, DataPath=stdpath, "
           "                    OutputWorkspace=workspaces[files_run], OutputTable='NicrDataTable',"
-          "                    XAxisUnit=xax_str, Normalization=norm)")
-        l("    print(subInst)")
+          "                    XAxisUnit=xax_str, Normalization=norm, Wavelength=wavelength, DataX=dataX_str, "
+          "                    MaskAngles=maskAnglesStr)")
         l("    if detEffi or flippRatio or subInst:")
         l("        DNSLoadData(StandardType='leer', RefWorkspaces=sample_table, DataPath=stdpath,"
           "                    OutputWorkspace=workspaces[files_run], OutputTable='BackgroundDataTable', "
-          "                    XAxisUnit=xax_str, Normalization=norm)")
+          "                    XAxisUnit=xax_str, Normalization=norm, Wavelength=wavelength, DataX=dataX_str,"
+          "                    MaskAngles=maskAnglesStr)")
         l("        DNSProcessStandardData(SampleTable=workspaces[files_run]+'_SampleDataTable', "
           "                               NiCrTable=workspaces[files_run]+'_NicrDataTable', "
           "                               BackgroundTable=workspaces[files_run]+'_BackgroundDataTable', "
-          "                               OutputTable='ProcessedDataTable', OutputWorkspace=workspaces[files_run],"
-          "                               XAxisUnits=xax_str)")
+          "                               OutputTable='ProcessedDataTable', OutputWorkspace=workspaces[files_run])")
+        l("        sample_table = mtd[workspaces[files_run]+'_ProcessedDataTable']")
         l("    if detEffi:")
         l("        DNSProcessVanadium(VanadiumTable=workspaces[files_run]+'_VanaDataTable',"
           "                           BackgroundTable=workspaces[files_run]+'_BackgroundDataTable',"
@@ -573,20 +592,20 @@ class DNSScriptElement(BaseScriptElement):
           "                       OutputWorkspace=workspaces[files_run], XAxisUnits=xax_str, "
           "                       DetEffiCorrection=str(detEffi), FlippCorrFactor=str(flippFac))")
         l("        sample_table = mtd[workspaces[files_run]+'_SampleTableNiCrCoef']")
-        l("    if saveToFile:")
-        l("        DNSProcessSampleData(SampleTable=sample_table, SubtractBackground=str(subInst), "
-          "                             DeteEffiCorrection=str(detEffi), FlippRatioCorrection=str(flippRatio),"
-          "                             OutputFileDirectory=fileDirectory, OutputFilePrefix=filePrefix,"
-          "                             OutputWorkspace=workspaces[files_run], OutputXAxis=xax_str, "
-          "                             SampleParameters=str(parametersSample))")
+        """l("    if saveToFile:")
+        l("        DNSProcessSampleData(SampleTable=sample_table, SubtractBackground=str(subInst),"
+          "                             SubtractBackgroundFactor=subInstFac, DeteEffiCorrection=str(detEffi),"
+          "                             FlippRatioCorrection=str(flippRatio), OutputFileDirectory=fileDirectory,"
+          "                             OutputFilePrefix=filePrefix, OutputWorkspace=workspaces[files_run],"
+          "                             OutputXAxis=xax_str, SampleParameters=str(parametersSample),"
+          "                             Comment=comments[files_run])")
         l("    else:")
-        l("        DNSProcessSampleData(SampleTable=sample_table, SubtractBackground=str(subInst), "
-          "                             DeteEffiCorrection=str(detEffi), FlippRatioCorrection=str(flippRatio), "
-          "                             OutputWorkspace=workspaces[files_run], OutputXAxis=xax_str, "
-          "                             SampleParameters=str(parametersSample))")
-
-        print(str(script[0]))
-
+        l("        DNSProcessSampleData(SampleTable=sample_table, SubtractBackground=str(subInst),"
+          "                             SubtractBackgroundFactor=subInstFac, DeteEffiCorrection=str(detEffi),"
+          "                             FlippRatioCorrection=str(flippRatio), OutputWorkspace=workspaces[files_run],"
+          "                             OutputXAxis=xax_str, SampleParameters=str(parametersSample),"
+          "                             Comment=comments[files_run])")
+"""
         return script[0]
 
 

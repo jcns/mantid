@@ -17,33 +17,34 @@ class DNSSetupWidget(BaseWidget):
             QAbstractTableModel.__init__(self, parent)
             self.tableData = []
 
-        def _get_row_numbers(self):
+        def _numRows(self):
             return len(self.tableData)
 
-        def _get_row(self, row):
-            return self.tableData[row] if row < self._get_row_numbers() else ('', '', '')
+        def _getRow(self, row):
+            return self.tableData[row] if row < self._numRows() else ('', '', '')
 
-        def _is_row_empty(self, row):
-            (runs, outWs, comment) = self._get_row(row)
+        def _isRowEmpty(self, row):
+            (runs, outWs, comment) = self._getRow(row)
             return not str(runs).strip() and not str(outWs).strip() and not str(comment).strip()
 
-        def _remove_trailing_empty_rows(self):
-            for row in reversed(range(self._get_row_numbers())):
-                if self._is_row_empty(row):
+        def _removeTrailingEmptyRows(self):
+            for row in reversed(range(self._numRows())):
+                if self._isRowEmpty(row):
                     del self.tableData[row]
                 else:
                     break
 
-        def _ensureHasRows(self, numRows):
-            while self._get_row_numbers() < numRows:
-                self.dataRuns.append(('', '', ''))
+        def _removeEmptyRows(self):
+            for row in reversed(range(self._numRows())):
+                if self._isRowEmpty(row):
+                    del self.tableData[row]
 
-        def _set_num_rows(self, numRows):
-            while self._get_row_numbers() < numRows:
+        def _ensureHasRows(self, numRows):
+            while self._numRows() < numRows:
                 self.tableData.append(('', '', ''))
 
-        def _set_cell(self, row, col, text):
-            self._set_num_rows(row + 1)
+        def _setCellText(self, row, col, text):
+            self._ensureHasRows(row + 1)
             (runNumbers, outWs, comment) = self.tableData[row]
 
             text = str(text).strip()
@@ -56,33 +57,27 @@ class DNSSetupWidget(BaseWidget):
 
             self.tableData[row] = (runNumbers, outWs, comment)
 
-        def _get_cell(self, row, col):
-            return str(self._get_row(row)[col]).strip()
+        def _getCellText(self, row, col):
+            return str(self._getRow(row)[col]).strip()
 
         headers = ('Run numbers', 'Output Workspace', 'Comment')
         selectCell = pyqtSignal(int, int)
 
-        def removeCell(self, index):
+        def emptyCells(self, indexes):
 
-            row = index.row()
-            col = index.column()
+            for index in indexes:
+                row = index.row()
+                col = index.column()
 
-            self._set_cell(row, col, text='')
-            self._remove_trailing_empty_rows()
+                self._setCellText(row, col, '')
 
+            self._removeEmptyRows()
             self.reset()
 
-            col = col - 1
-
-            if col < 0:
-                row = row -1
-                col = 0
-
-            row = max(row, 0)
-            self.selectCell.emit(row, col)
+            self.selectCell.emit(0, 0)
 
         def rowCount(self, _=QModelIndex()):
-            return self._get_row_numbers() + 1
+            return self._numRows() + 1
 
         def columnCount(self, _=QModelIndex()):
             return 3
@@ -95,7 +90,7 @@ class DNSSetupWidget(BaseWidget):
 
         def data(self, index, role):
             if Qt.DisplayRole == role or Qt.EditRole == role:
-                return self._get_cell(index.row(), index.column())
+                return self._getCellText(index.row(), index.column())
 
             return None
 
@@ -103,8 +98,8 @@ class DNSSetupWidget(BaseWidget):
             row = index.row()
             col = index.column()
 
-            self._set_cell(row, col, text)
-            self._remove_trailing_empty_rows()
+            self._setCellText(row, col, text)
+            self._removeTrailingEmptyRows()
 
             self.reset()
 
@@ -128,40 +123,45 @@ class DNSSetupWidget(BaseWidget):
             QAbstractTableModel.__init__(self, parent)
             self.tableData = []
 
-        def _get_row_numbers(self):
+        def _numRows(self):
             return len(self.tableData)
 
-        def _get_row(self, row):
-            return self.tableData[row] if row < self._get_row_numbers() else ('', '')
+        def _getRow(self, row):
+            return self.tableData[row] if row < self._numRows() else ('', '')
 
-        def _is_row_empty(self, row):
-            (minAngle, maxAngle) = self._get_row(row)
+        def _isRowEmpty(self, row):
+            (minAngle, maxAngle) = self._getRow(row)
             return not str(minAngle).strip() and not str(maxAngle).strip()
 
-        def _remove_trailing_empty_rows(self):
-            for row in reversed(range(self._get_row_numbers())):
-                if self._is_row_empty(row):
+        def _removeTrailingEmptyRows(self):
+            for row in reversed(range(self._numRows())):
+                if self._isRowEmpty(row):
                     del self.tableData[row]
                 else:
                     break
 
-        def _set_num_rows(self, numRows):
-            while self._get_row_numbers() < numRows:
+        def _removeEmptyRows(self):
+            for row in reversed(range(self._numRows())):
+                if self._isRowEmpty(row):
+                    del self.tableData[row]
+
+        def _ensureHasRows(self, numRows):
+            while self._numRows() < numRows:
                 self.tableData.append(('', ''))
 
-        def _has_no_min_angle(self, row):
-            if not self._is_row_empty(row):
+        def _noMinAngle(self, row):
+            if not self._isRowEmpty(row):
                 (minAngle, maxAngle) = self.tableData[row]
                 return not minAngle
 
-        def _has_no_max_angle(self, row):
-            if not self._is_row_empty(row):
+        def _noMaxAngle(self, row):
+            if not self._isRowEmpty(row):
                 (minAngle, maxAngle) = self.tableData[row]
                 return not maxAngle
 
-        def _set_cell(self, row, col, text):
+        def _setCellText(self, row, col, text):
 
-            self._set_num_rows(row + 1)
+            self._ensureHasRows(row + 1)
             (minAngle, maxAngle) = self.tableData[row]
 
             text = str(text).strip()
@@ -173,45 +173,39 @@ class DNSSetupWidget(BaseWidget):
 
             self.tableData[row] = (minAngle, maxAngle)
 
-        def _get_cell(self, row, col):
-            return str(self._get_row(row)[col]).strip()
+        def _getCellText(self, row, col):
+            return str(self._getRow(row)[col]).strip()
 
         headers = ('Min Angle[\305]', 'Max Angle[\305]')
         selectCell = pyqtSignal(int, int)
 
-        def removeCell(self, index):
+        def emptyCells(self, indexes):
 
-            row = index.row()
-            col = index.column()
+            for index in indexes:
+                row = index.row()
+                col = index.column()
 
-            self._set_cell(row, col, text='')
-            self._removeTrailingEmptyRows()
+                self._setCellText(row, col, '')
 
+            self._removeEmptyRows()
             self.reset()
 
-            col = col - 1
+            self.selectCell.emit(0, 0)
 
-            if col < 0:
-                row = row -1
-                col = 0
-
-            row = max(row, 0)
-            self.selectCell.emit(row, col)
-
-        def row_no_min_angle(self):
+        def rowNoMinAngle(self):
             for i in range(len(self.tableData)):
-                if self._has_no_min_angle(i):
+                if self._noMinAngle(i):
                     return i
             return None
 
-        def row_no_max_angle(self):
+        def rowNoMaxAngle(self):
             for i in range(len(self.tableData)):
-                if self._has_no_max_angle(i):
+                if self._noMaxAngle(i):
                     return i
             return None
 
         def rowCount(self, _=QModelIndex()):
-            return self._get_row_numbers() + 1
+            return self._numRows() + 1
 
         def columnCount(self, _=QModelIndex()):
             return 2
@@ -224,7 +218,7 @@ class DNSSetupWidget(BaseWidget):
 
         def data(self, index, role):
             if Qt.DisplayRole == role or Qt.EditRole == role:
-                return self._get_cell(index.row(), index.column())
+                return self._getCellText(index.row(), index.column())
 
             return None
 
@@ -232,8 +226,8 @@ class DNSSetupWidget(BaseWidget):
             row = index.row()
             col = index.column()
 
-            self._set_cell(row, col, text)
-            self._remove_trailing_empty_rows()
+            self._setCellText(row, col, text)
+            self._removeTrailingEmptyRows()
 
             self.reset()
 
@@ -255,10 +249,7 @@ class DNSSetupWidget(BaseWidget):
 
         def keyPressEvent(self, QKeyEvent):
             if QKeyEvent.key() == Qt.Key_Delete or QKeyEvent.key() == Qt.Key_Backspace:
-                index = self.selectedIndexes()
-                model = self.model()
-                for i in index:
-                    model.removeCell(i)
+                self.model().emptyCells(self.selectedIndexes())
             else:
                 QTableView.keyPressEvent(self, QKeyEvent)
 
@@ -680,10 +671,12 @@ class DNSSetupWidget(BaseWidget):
             self.standardDataPath.setText(dirname)
 
     def _detEffiChanged(self):
-        if self.chkdetEffi.isChecked():
-            self.chksumVan.setEnabled(True)
-        else:
-            self.chksumVan.setEnabled(False)
+        # Disable sum vanadium over detector position
+        self.chksumVan.setEnabled(False)
+        #if self.chkdetEffi.isChecked():
+        #    self.chksumVan.setEnabled(True)
+        #else:
+        #    self.chksumVan.setEnabled(False)
 
     def _subInstChanged(self):
         if self.chksubInst.isChecked():
@@ -809,13 +802,13 @@ class DNSSetupWidget(BaseWidget):
 
         elem = dnsScriptElement
 
-        if self.maskAngleModel.row_no_min_angle():
-            message = "No min Angle in row: " + str(self.maskAngleModel.row_no_min_angle())
+        if self.maskAngleModel.rowNoMinAngle():
+            message = "No min Angle in row: " + str(self.maskAngleModel.rowNoMinAngle())
             message += " , using default: 0.0"
             QMessageBox.warning(self, "Warning", message)
 
-        if self.maskAngleModel.row_no_max_angle():
-            message = "No max Angle in row: " + str(self.maskAngleModel.row_no_max_angle())
+        if self.maskAngleModel.rowNoMaxAngle():
+            message = "No max Angle in row: " + str(self.maskAngleModel.rowNoMaxAngle())
             message += " , using default: 180.0"
             QMessageBox.warning(self, "Warining", message)
 
@@ -845,10 +838,12 @@ class DNSSetupWidget(BaseWidget):
 
         self.chkdetEffi.setChecked(elem.detEffi)
         self.chksumVan.setChecked(elem.sumVan)
-        if self.chkdetEffi.isChecked():
-            self.chksumVan.setEnabled(True)
-        else:
-            self.chksumVan.setEnabled(False)
+        # Deaktivate Sum Vanadium Option
+        self.chksumVan.setEnabled(False)
+        #if self.chkdetEffi.isChecked():
+        #    self.chksumVan.setEnabled(True)
+        #else:
+        #    self.chksumVan.setEnabled(False)
         self.chksubInst.setChecked(elem.subInst)
         self.subFac.setValue(elem.subFac)
         if self.chksubInst.isChecked():
