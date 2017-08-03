@@ -74,6 +74,10 @@
                         <value val="True"/>
                 </parameter>
 
+                <parameter name="keep_events" type="bool">
+                        <value val="True"/>
+                </parameter>
+
 	</component-link>
 
 </parameter-file>

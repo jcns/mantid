@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function)
 
 from mantid.api import PythonAlgorithm, AlgorithmFactory, mtd
+from mantid.kernel import Direction
 
 import numpy as np
 
@@ -13,22 +14,22 @@ class DNSProcessStandardData(PythonAlgorithm):
     def PyInit(self):
 
         self.declareProperty(name='SampleTable',     defaultValue='', doc='Table of sample Data')
-        self.declareProperty(name='NiCrTable',       defaultValue='', doc='Table of nicr Data')
         self.declareProperty(name='BackgroundTable', defaultValue='', doc='Table of background Data')
-        self.declareProperty(name='OutputTable',     defaultValue='', doc='Name of the output table')
         self.declareProperty(name='OutputWorkspace', defaultValue='', doc='Name of the output workspace')
+        self.declareProperty(name='OutputTable',     defaultValue='', doc='Name of the output table')
+        self.declareProperty(name='Polarisations',   defaultValue='', direction=Direction.Output, doc='')
 
     def PyExec(self):
 
-        tables = []
-        column_names = {}
+        tables            = []
+        column_names      = {}
         column_group_name = {}
 
-        ws_name        = self.getProperty('OutputWorkspace').value
-        leer_name      = self.getProperty('BackgroundTable').value
-        out_table_name = ws_name+'_'+self.getProperty('OutputTable').value
-
         sample_table = mtd[self.getProperty('SampleTable').value]
+        leer_name    = self.getProperty('BackgroundTable').value
+
+        ws_name        = self.getProperty('OutputWorkspace').value
+        out_table_name = ws_name+'_'+self.getProperty('OutputTable').value
 
         if mtd.doesExist(leer_name):
             leer = mtd[leer_name]
@@ -36,20 +37,27 @@ class DNSProcessStandardData(PythonAlgorithm):
             column_names[leer.getName()] = 'background_ws'
             column_group_name[leer.getName()] = 'background_group_ws'
 
-        tableWs = sample_table.clone(OutputWorkspace=out_table_name)
+        table_ws = sample_table.clone(OutputWorkspace=out_table_name)
+        table_ws.addColumn('str', 'background_ws')
+        table_ws.addColumn('str', 'background_group_ws')
 
-        tableWs.addColumn('str', 'background_ws')
-        tableWs.addColumn('str', 'background_group_ws')
+        polarisations_list = []
 
-        for i in range(tableWs.rowCount()):
-            row_out = tableWs.row(i)
+        for i in range(table_ws.rowCount()):
+            row_out = table_ws.row(i)
             for t in tables:
                 for j in range(t.rowCount()):
                     row = t.row(j)
-                    if row_out['polarisation'] == row['polarisation']:
+                    pol = row_out['polarisation']
+                    if pol == row['polarisation']:
+                        if pol not in polarisations_list:
+                            polarisations_list.append(pol)
                         if row_out['flipper'] == row['flipper']:
                             if np.abs(float(row_out['deterota'])-float(row['deterota'])) < 0.5:
-                                tableWs.setCell(column_names[t.getName()], i, row['run_title'])
-                                tableWs.setCell(column_group_name[t.getName()], i, row['ws_group'])
+                                table_ws.setCell(column_names[t.getName()], i, row['run_title'])
+                                table_ws.setCell(column_group_name[t.getName()], i, row['ws_group'])
+        polarisations = ', '.join(polarisations_list)
+
+        self.setProperty('Polarisations', polarisations)
 
 AlgorithmFactory.subscribe(DNSProcessStandardData)
