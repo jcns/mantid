@@ -401,7 +401,7 @@ class DNSLoadData(PythonAlgorithm):
 
     def _sum_same(self, ws_list, group_list, angle, ws_name):
         """
-        sum workspaces if the polarisation, flipp, deterota and omega (if single crystal sample) is the same
+        sum workspaces if the polarisation, flip, deterota and omega (if single crystal sample) is the same
         :param ws_list: list of the workspaces to be grouped
         :param group_list: list of grouped workspaces
         :param angle: angle of the deterota
@@ -424,7 +424,7 @@ class DNSLoadData(PythonAlgorithm):
 
     def _dic_from_keys(self, deterota):
         """
-        create dictionaries with deterotas for polarisations and flipps
+        create dictionaries with deterotas for polarisations and flips
         :param deterota: list of deterotas
         """
 
@@ -520,6 +520,7 @@ class DNSLoadData(PythonAlgorithm):
 
         self.out_ws_name = self.getProperty("OutputWorkspace").value
         self.xax         = self.getProperty("XAxisUnit").value
+        print(self.xax)
         table_name       = self.out_ws_name+"_"+self.getProperty("OutputTable").value
 
         wavelength = float(self.getProperty("Wavelength").value)

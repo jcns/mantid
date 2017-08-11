@@ -446,8 +446,8 @@ class DNSSetupWidget(BaseWidget):
     TIP_chkSumVan      = ""
     TIP_chkSubInst     = ""
     TIP_subFac         = ""
-    TIP_chkFlippRatio  = ""
-    TIP_flippFac       = ""
+    TIP_chkFlipRatio  = ""
+    TIP_flipFac       = ""
     TIP_multiSF        = ""
     TIP_rbnNormTime    = ""
     TIP_rbnNormMonitor = ""
@@ -542,15 +542,15 @@ class DNSSetupWidget(BaseWidget):
         self.chksumVan         = tip(QCheckBox("Sum Vanadium over detector position"),       self.TIP_chkSumVan)
         self.chksubInst        = tip(QCheckBox("Subtract instrument background for sample"), self.TIP_chkSubInst)
         self.subFac            = tip(QDoubleSpinBox(),                                       self.TIP_subFac)
-        self.chkFlippRatio     = tip(QCheckBox("Flipping ratio correction"),                 self.TIP_chkFlippRatio)
-        self.flippFac          = tip(QDoubleSpinBox(),                                       self.TIP_flippFac)
+        self.chkFlipRatio     = tip(QCheckBox("Flipping ratio correction"), self.TIP_chkFlipRatio)
+        self.flipFac          = tip(QDoubleSpinBox(), self.TIP_flipFac)
         self.multiSF           = tip(QDoubleSpinBox(),                                       self.TIP_multiSF)
         self.rbnNormTime       = tip(QRadioButton("time"),                                   self.TIP_rbnNormTime)
         self.rbnNormMonitor    = tip(QRadioButton("monitor"),                                self.TIP_rbnNormMonitor)
         self.neutronWaveLength = tip(QDoubleSpinBox(),                                       self.TIP_neutronWaveLen)
 
         set_spin(self.subFac,            0.0)
-        set_spin(self.flippFac,          0.0)
+        set_spin(self.flipFac, 0.0)
         set_spin(self.multiSF,           0.0, 1.0)
         set_spin(self.neutronWaveLength, 0.0)
 
@@ -728,7 +728,7 @@ class DNSSetupWidget(BaseWidget):
                                 QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
         hbox_sub_inst   = hbox((QLabel("      "), QLabel("Factor"), self.subFac,
                                 QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
-        hbox_flip       = hbox((QLabel("      "), QLabel("Factor"), self.flippFac,
+        hbox_flip       = hbox((QLabel("      "), QLabel("Factor"), self.flipFac,
                                 QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
         hbox_multi_sp   = hbox((QLabel("Multiple SF scattering probability"), self.multiSF,
                                 QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)))
@@ -746,7 +746,7 @@ class DNSSetupWidget(BaseWidget):
         grid.addWidget(self.chksubInst,    2, 0, 1, 3)
         grid.addLayout(hbox_sub_inst,      3, 0, 1, 4)
         grid.addItem(spacer_fac1,          4, 0)
-        grid.addWidget(self.chkFlippRatio, 5, 0, 1, 2)
+        grid.addWidget(self.chkFlipRatio, 5, 0, 1, 2)
         grid.addLayout(hbox_flip,          6, 0, 1, 4)
         grid.addItem(spacer_fac2,          7, 0)
         grid.addLayout(hbox_multi_sp,      8, 0, 1, 3)
@@ -851,7 +851,7 @@ class DNSSetupWidget(BaseWidget):
         self.btnStandardDataPath.clicked.connect(self._stdDataDir)
         self.chkdetEffi.clicked.connect(self._detEffiChanged)
         self.chksubInst.clicked.connect(self._subInstChanged)
-        self.chkFlippRatio.clicked.connect(self._flippRatioChanged)
+        self.chkFlipRatio.clicked.connect(self._flipRatioChanged)
         self.rbnSingleCryst.clicked.connect(self._rbnOutChanged)
         self.rbnPolyAmor.clicked.connect(self._rbnOutChanged)
 
@@ -924,14 +924,14 @@ class DNSSetupWidget(BaseWidget):
         else:
             self.subFac.setEnabled(False)
 
-    def _flippRatioChanged(self):
+    def _flipRatioChanged(self):
         """
         changes if the state of the flipping ratio check box changed
         """
-        if self.chkFlippRatio.isChecked():
-            self.flippFac.setEnabled(True)
+        if self.chkFlipRatio.isChecked():
+            self.flipFac.setEnabled(True)
         else:
-            self.flippFac.setEnabled(False)
+            self.flipFac.setEnabled(False)
 
     def _rbnOutChanged(self):
         """
@@ -1045,8 +1045,8 @@ class DNSSetupWidget(BaseWidget):
         elem.sumVan         = self.chksumVan.isChecked()
         elem.subInst        = self.chksubInst.isChecked()
         elem.subFac         = self.subFac.value()
-        elem.flippRatio     = self.chkFlippRatio.isChecked()
-        elem.flippFac       = self.flippFac.value()
+        elem.flipRatio     = self.chkFlipRatio.isChecked()
+        elem.flipFac       = self.flipFac.value()
         elem.multiSF        = self.multiSF.value()
         elem.neutronWaveLen = self.neutronWaveLength.value()
         elem.normalise = elem.NORM_TIME if self.rbnNormTime.isChecked() else \
@@ -1125,8 +1125,8 @@ class DNSSetupWidget(BaseWidget):
         #    self.chksumVan.setEnabled(False)
         self.chksubInst.setChecked(elem.subInst)
         self.subFac.setValue(elem.subFac)
-        self.chkFlippRatio.setChecked(elem.flippRatio)
-        self.flippFac.setValue(elem.flippFac)
+        self.chkFlipRatio.setChecked(elem.flipRatio)
+        self.flipFac.setValue(elem.flipFac)
         self.multiSF.setValue(elem.multiSF)
         self.multiSF.setEnabled(False)
         if elem.normalise == elem.NORM_TIME:
@@ -1140,10 +1140,10 @@ class DNSSetupWidget(BaseWidget):
         else:
             self.subFac.setEnabled(False)
 
-        if self.chkFlippRatio.isChecked():
-            self.flippFac.setEnabled(True)
+        if self.chkFlipRatio.isChecked():
+            self.flipFac.setEnabled(True)
         else:
-            self.flippFac.setEnabled(False)
+            self.flipFac.setEnabled(False)
 
         # set state for sample data settings widget
         if elem.out == elem.OUT_POLY_AMOR:

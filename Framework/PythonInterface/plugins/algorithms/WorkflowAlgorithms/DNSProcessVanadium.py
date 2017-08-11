@@ -8,19 +8,25 @@ import numpy as np
 
 
 class DNSProcessVanadium(PythonAlgorithm):
+    """
+    compute vanadium coefficients and add to table
+    """
 
-    def _merge_and_normalize(self, wsgroup):
+    def _merge_and_normalize(self, ws_group):
+        """
+        merge and normalize workspace group with all output x axis units
+        :param ws_group: workspace group to be merged and normalized
+        """
         x_axis = self.xax.split(", ")
         for x in x_axis:
-            data_merged = DNSMergeRuns(wsgroup, x, OutputWorkspace=wsgroup+"_m0_"+x)
-            norm_merged = DNSMergeRuns(wsgroup+self.suff_norm, x, OutputWorkspace=wsgroup+self.suff_norm+"_m_"+x)
-
+            data_merged = DNSMergeRuns(ws_group, x, OutputWorkspace=ws_group+"_m0_"+x)
+            norm_merged = DNSMergeRuns(ws_group+self.suff_norm, x, OutputWorkspace=ws_group+self.suff_norm+"_m_"+x)
             try:
-                Divide(data_merged, norm_merged, OutputWorkspace=wsgroup+"_m_"+x)
+                Divide(data_merged, norm_merged, OutputWorkspace=ws_group+"_m_"+x)
             except:
                 data_x = data_merged.extractX()
                 norm_merged.setX(0, data_x[0])
-                Divide(data_merged, norm_merged, OutputWorkspace=wsgroup+"_m_"+x)
+                Divide(data_merged, norm_merged, OutputWorkspace=ws_group+"_m_"+x)
 
     def category(self):
         return "Workflow\\MLZ\\DNS"
@@ -58,12 +64,14 @@ class DNSProcessVanadium(PythonAlgorithm):
 
         offset = 0
 
+        # offset to next vanadium workspace group
         gr  = vana_table.cell("ws_group", 0)
         gr2 = vana_table.cell("ws_group", offset)
         while gr == gr2:
             offset += 1
             gr2 = vana_table.cell("ws_group", offset)
 
+        # new columns vor vanadium coefficients
         new_sample_table.addColumn("str", "vana_coef")
         new_sample_table.addColumn("str", "vana_coef_group")
 
@@ -86,6 +94,8 @@ class DNSProcessVanadium(PythonAlgorithm):
 
             if pol in polarisations:
 
+                # subtract instrument background from vanadium
+
                 norm_ratio_sf  = Divide(vana_group_sf+self.suff_norm, bkg_group_sf+self.suff_norm,
                                         OutputWorkspace=vana_group_sf+"_nratio")
                 norm_ratio_nsf = Divide(vana_group_nsf+self.suff_norm, bkg_group_nsf+self.suff_norm,
@@ -107,9 +117,12 @@ class DNSProcessVanadium(PythonAlgorithm):
                 vana_group_sf  = vana_group_sf.replace("raw", "")
                 vana_group_nsf = vana_group_nsf.replace("raw", "")
 
+                # merge and normalize vanadium
                 if self._m_and_n and not self.sc:
                     self._merge_and_normalize(vana_group_sf)
                     self._merge_and_normalize(vana_group_nsf)
+
+                # compute vanadium coefficient
 
                 vana_sf_nsf_sum      = Plus(vana_group_sf, vana_group_nsf,
                                             OutputWorkspace=out_ws_name+"_vana_sf_nsf_sum_"+pol)
@@ -135,12 +148,15 @@ class DNSProcessVanadium(PythonAlgorithm):
                 deterota = []
                 dete_dict = {}
 
+                # sort coefficient in dictionaries
+
                 for coef_ws in vana_coefs_total:
                     deterota.append(coef_ws.getRun().getProperty("deterota").value)
                     dete_dict[coef_ws.getRun().getProperty("deterota").value] = coef_ws.getName()
 
                 vana_coefs_dict[pol] = dete_dict
 
+        # insert vanadium coefficients in right row of the table workspace
         for i in range(new_sample_table.rowCount()):
 
             row = new_sample_table.row(i)
@@ -148,22 +164,20 @@ class DNSProcessVanadium(PythonAlgorithm):
             pol_sample = row["polarisation"]
             angle      = float(row["deterota"])
 
+            # if vanadium has all polarisations
             if pol_sample in vana_coefs_dict.keys():
-
                 for key in vana_coefs_dict[pol_sample].keys():
                     if np.fabs(angle - key) < tol:
                         angle = key
-
                 new_sample_table.setCell("vana_coef", i, vana_coefs_dict[pol_sample][angle])
                 new_sample_table.setCell("vana_coef_group", i,
                                          mtd[vana_coefs_dict[pol_sample][angle]].getRun().getProperty("ws_group").value)
+            # vanadium with one polarisation
             else:
-
                 pol = vana_coefs_dict.keys()[0]
                 for key in vana_coefs_dict[pol].keys():
                     if np.fabs(angle - key) < tol:
                         angle = key
-
                 new_sample_table.setCell("vana_coef", i, vana_coefs_dict[pol][angle])
                 new_sample_table.setCell("vana_coef_group", i,
                                          mtd[vana_coefs_dict[pol][angle]].getRun().getProperty("ws_group").value)

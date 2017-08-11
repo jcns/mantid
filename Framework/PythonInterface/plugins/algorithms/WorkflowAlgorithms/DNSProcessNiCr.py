@@ -8,32 +8,38 @@ import numpy as np
 
 
 class DNSProcessNiCr(PythonAlgorithm):
+    """
+    compute nickel chrome coefficients and add to table
+    """
 
     def _merge_and_normalize(self, ws_group):
-
+        """
+        merge and normalize workspace group with all output x axis units
+        :param ws_group: workspace group to be merged and normalized
+        """
         x_axis = self.xax.split(", ")
         for x in x_axis:
-            data_merged = DNSMergeRuns(ws_group, x, OutputWorkspace=ws_group+"_m0"+"_"+x)
-            norm_merged = DNSMergeRuns(ws_group+self.suff_norm, x, OutputWorkspace=ws_group+self.suff_norm+"_m"+"_"+x)
+            data_merged = DNSMergeRuns(ws_group, x, OutputWorkspace=ws_group+"_m0_"+x)
+            norm_merged = DNSMergeRuns(ws_group+self.suff_norm, x, OutputWorkspace=ws_group+self.suff_norm+"_m_"+x)
             try:
-                Divide(data_merged, norm_merged, OutputWorkspace=ws_group+"_m"+"_"+x)
+                Divide(data_merged, norm_merged, OutputWorkspace=ws_group+"_m_"+x)
             except:
                 data_x = data_merged.extractX()
                 norm_merged.setX(0, data_x[0])
-                Divide(data_merged, norm_merged, OutputWorkspace=ws_group+"_m"+"_"+x)
+                Divide(data_merged, norm_merged, OutputWorkspace=ws_group+"_m_"+x)
 
     def category(self):
         return "Workflow\\MLZ\\DNS"
 
     def PyInit(self):
 
-        self.declareProperty(name="SampleTable",     defaultValue="", doc="Name of the sample data ITableWorkspace")
-        self.declareProperty(name="NiCrTable",       defaultValue="", doc="Name of the nickel-chrome ITableWorkspace")
-        self.declareProperty(name="OutputWorkspace", defaultValue="", doc="Name of the output workspace")
-        self.declareProperty(name="XAxisUnits",      defaultValue="", doc="List of the output x axis units")
-        self.declareProperty(name="Polarisations",   defaultValue="", doc="")
-        self.declareProperty(name="FlippCorrFactor", defaultValue="", doc="Factor for the flipping ratio correction")
-        self.declareProperty(name="SingleCrystal",   defaultValue="", doc="")
+        self.declareProperty(name="SampleTable",     defaultValue="",      doc="Name of the sample data ITableWorkspace")
+        self.declareProperty(name="NiCrTable",       defaultValue="",      doc="Name of the nickel-chrome ITableWorkspace")
+        self.declareProperty(name="OutputWorkspace", defaultValue="",      doc="Name of the output workspace")
+        self.declareProperty(name="XAxisUnits",      defaultValue="",      doc="List of the output x axis units")
+        self.declareProperty(name="Polarisations",   defaultValue="",      doc="List of polarisations of the data")
+        self.declareProperty(name="FlipCorrFactor", defaultValue="",       doc="Factor for flipping ratio correction")
+        self.declareProperty(name="SingleCrystal",   defaultValue="False", doc="Bool if sample is single crystal")
 
     def PyExec(self):
 
@@ -41,11 +47,11 @@ class DNSProcessNiCr(PythonAlgorithm):
         nicr_table   = mtd[self.getProperty("NiCrTable").value]
 
         out_ws_name = self.getProperty("OutputWorkspace").value
-        self.xax         = self.getProperty("XAxisUnits").value
+        self.xax    = self.getProperty("XAxisUnits").value
 
         polarisations = self.getProperty("Polarisations").value.split(", ")
 
-        flippFac = self.getProperty("FlippCorrFactor").value
+        flipFac = self.getProperty("FlipCorrFactor").value
 
         sc      = self.getProperty("SingleCrystal").value
         self.sc = eval(sc)
@@ -58,10 +64,12 @@ class DNSProcessNiCr(PythonAlgorithm):
         tol            = float(instrument.getStringParameter("two_theta_tolerance")[0])
         self._m_and_n  = instrument.getBoolParameter("keep_intermediate_workspace")[0]
 
+        # add columns for nickel chrome coefficients
         new_sample_table = sample_table.clone(OutputWorkspace=out_ws_name+"_SampleTableNiCrCoef")
         new_sample_table.addColumn("str", "nicr_coef")
         new_sample_table.addColumn("str", "nicr_coef_group")
 
+        # compute offset to next nickel chrome workspace goup
         offset = 0
         gr1 = nicr_table.cell("ws_group", 0)
         gr2 = nicr_table.cell("ws_group", offset)
@@ -89,6 +97,8 @@ class DNSProcessNiCr(PythonAlgorithm):
 
             if pol in polarisations:
 
+                # subtract instrument background from nickel chrome
+
                 norm_ratio_sf  = Divide(nicr_group_sf+self.suff_norm, bkg_group_sf+self.suff_norm,
                                         OutputWorkspace=nicr_group_sf+"_nratio")
                 norm_ratio_nsf = Divide(nicr_group_nsf+self.suff_norm, bkg_group_nsf+self.suff_norm,
@@ -110,13 +120,16 @@ class DNSProcessNiCr(PythonAlgorithm):
                 nicr_group_sf  = nicr_group_sf.replace("raw", "")
                 nicr_group_nsf = nicr_group_nsf.replace("raw", "")
 
+                # merge and normalize nickel chrome
                 if self._m_and_n and not self.sc:
                     self._merge_and_normalize(nicr_group_sf)
                     self._merge_and_normalize(nicr_group_nsf)
 
+                # compute nickel chrome coefficient
+
                 nicr_nratio = Divide(nicr_group_nsf+self.suff_norm, nicr_group_sf+self.suff_norm,
                                      OutputWorkspace=nicr_group_nsf.replace("group", "nratio"))
-                nicr_nratio = Scale(nicr_nratio, OutputWorkspace=nicr_nratio.getName(), Factor=flippFac,
+                nicr_nratio = Scale(nicr_nratio, OutputWorkspace=nicr_nratio.getName(), Factor=flipFac,
                                     Operation="Multiply")
 
                 nicr_coefs_norm = Multiply(nicr_group_sf, nicr_nratio,
@@ -131,33 +144,35 @@ class DNSProcessNiCr(PythonAlgorithm):
 
                 dete_dict = {}
 
+                # sort coefficient in dictionaries
+
                 for coefs_ws in nicr_coefs_normalized:
                     dete_dict[coefs_ws.getRun().getProperty("deterota").value] = coefs_ws.getName()
 
                 nicr_coefs_dict[pol] = dete_dict
 
+        # insert nickel chrome coefficients in right row of the table workspace
         for i in range(new_sample_table.rowCount()):
 
-            row        = new_sample_table.row(i)
+            row = new_sample_table.row(i)
+
             pol_sample = row["polarisation"]
             angle      = float(row["deterota"])
 
+            # if nickel chrome has all polarisations
             if pol_sample in nicr_coefs_dict.keys():
-
                 for key in nicr_coefs_dict[pol_sample].keys():
                     if np.fabs(angle - key) < tol:
                         angle = key
-
                 new_sample_table.setCell("nicr_coef", i, nicr_coefs_dict[pol_sample][angle])
                 new_sample_table.setCell("nicr_coef_group", i,
                                          mtd[nicr_coefs_dict[pol_sample][angle]].getRun().getProperty("ws_group").value)
+            # nickel chrome with one polarisation
             else:
                 pol = nicr_coefs_dict.keys()[0]
-
                 for key in nicr_coefs_dict[pol].keys():
                     if np.fabs(angle - key) < tol:
                         angle = key
-
                 new_sample_table.setCell("nicr_coef", i, nicr_coefs_dict[pol][angle])
                 new_sample_table.setCell("nicr_coef_group", i,
                                          mtd[nicr_coefs_dict[pol][angle]].getRun().getProperty("ws_group").value)

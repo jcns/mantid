@@ -25,7 +25,10 @@ class DNSProcessStandardData(PythonAlgorithm):
 
     def PyExec(self):
 
-        tables            = []
+        # list of workspace types
+        ws_types = []
+
+        # name and group name of the ws columns
         column_names      = {}
         column_group_name = {}
 
@@ -35,21 +38,25 @@ class DNSProcessStandardData(PythonAlgorithm):
         output_ws_name = self.getProperty("OutputWorkspace").value
         out_table_name = output_ws_name+"_"+self.getProperty("OutputTable").value
 
+        table_ws = sample_table.clone(OutputWorkspace=out_table_name)
+
+        # if background needed (not if no correction)
         if mtd.doesExist(leer_name):
             leer = mtd[leer_name]
-            tables.append(leer)
+            ws_types.append(leer)
             column_names[leer.getName()]      = "background_ws"
             column_group_name[leer.getName()] = "background_group_ws"
 
-        table_ws = sample_table.clone(OutputWorkspace=out_table_name)
-        table_ws.addColumn("str", "background_ws")
-        table_ws.addColumn("str", "background_group_ws")
+            # new columns for background data
+            table_ws.addColumn("str", "background_ws")
+            table_ws.addColumn("str", "background_group_ws")
 
         polarisations_list = []
 
+        # sort background workspaces to data workspaces with same polarisation, filpp and deterota
         for i in range(table_ws.rowCount()):
             row_out = table_ws.row(i)
-            for t in tables:
+            for t in ws_types:
                 for j in range(t.rowCount()):
                     row = t.row(j)
                     pol = row_out["polarisation"]

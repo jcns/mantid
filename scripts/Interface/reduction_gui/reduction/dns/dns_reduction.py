@@ -27,8 +27,8 @@ class DNSScriptElement(BaseScriptElement):
     DEF_SumVan      = False
     DEF_SubInst     = True
     DEF_SubFac      = 1.0
-    DEF_FlippRatio  = True
-    DEF_FlippFac    = 1.0
+    DEF_FlipRatio  = True
+    DEF_FlipFac    = 1.0
     DEF_MultiSF     = 0.0
     DEF_Normalise   = NORM_TIME
     DEF_NeutWaveLen = 0.0
@@ -93,8 +93,8 @@ class DNSScriptElement(BaseScriptElement):
         self.sumVan         = self.DEF_SumVan
         self.subInst        = self.DEF_SubInst
         self.subFac         = self.DEF_SubFac
-        self.flippRatio     = self.DEF_FlippRatio
-        self.flippFac       = self.DEF_FlippFac
+        self.flipRatio     = self.DEF_FlipRatio
+        self.flipFac       = self.DEF_FlipFac
         self.multiSF        = self.DEF_MultiSF
         self.normalise      = self.DEF_Normalise
         self.neutronWaveLen = self.DEF_NeutWaveLen
@@ -159,8 +159,8 @@ class DNSScriptElement(BaseScriptElement):
         put("sum_Vanadium",               self.sumVan)
         put("subtract_instrument",        self.subInst)
         put("subtract_instrument_factor", self.subFac)
-        put("flipping_ratio",             self.flippRatio)
-        put("flipping_ratio_factor",      self.flippFac)
+        put("flipping_ratio", self.flipRatio)
+        put("flipping_ratio_factor", self.flipFac)
         put("multiple_SF_scattering",     self.multiSF)
         put("normalise",                  self.normalise)
         put("neutron_wave_length",        self.neutronWaveLen)
@@ -273,7 +273,7 @@ class DNSScriptElement(BaseScriptElement):
             self.sumVan         = get_bol("sum_Vanadium",               self.DEF_SumVan)
             self.subInst        = get_bol("subtract_instrument",        self.DEF_SubInst)
             self.subFac         = get_flt("subtract_instrument_factor", self.subFac)
-            self.flippRatio     = get_bol("flipping_ratio",             self.DEF_FlippRatio)
+            self.flipRatio     = get_bol("flipping_ratio", self.DEF_FlipRatio)
             self.multiSF        = get_flt("multiple_SF_scattering",     self.DEF_MultiSF)
             self.normalise      = get_int("normalise",                  self.DEF_Normalise)
             self.neutronWaveLen = get_flt("neutron_wave_length",        self.DEF_NeutWaveLen)
@@ -414,13 +414,13 @@ class DNSScriptElement(BaseScriptElement):
             found = self._search_std_data_file(self.standardDataPath, det_eff_filename)
             if not found:
                 self.error("no file for detector efficiency correction in "+str(self.standardDataPath)+" found")
-        if self.subInst or self.detEffi or self.flippRatio:
+        if self.subInst or self.detEffi or self.flipRatio:
             sub_inst_filename = instrument.getStringParameter("bkg")[0]
             found = self._search_std_data_file(self.standardDataPath, sub_inst_filename)
             if not found:
                 self.error("no file to subtract of instrument background for sample in "+str(self.standardDataPath)
                            + " found")
-        if self.flippRatio:
+        if self.flipRatio:
             flip_ratio_filename = instrument.getStringParameter("nicr")[0]
             found = self._search_std_data_file(self.standardDataPath, flip_ratio_filename)
             if not found:
@@ -518,7 +518,7 @@ class DNSScriptElement(BaseScriptElement):
         data_red_settings = {"Detector efficiency correction": str(self.detEffi),
                              "Sum Vanadium over detector position": str(self.sumVan),
                              "Subtract instrument background": str(self.subInst), "Subtract factor": self.subFac,
-                             "Flipping ratio correction": str(self.flippRatio), "Flipping ratio factor": self.flippFac,
+                             "Fliping ratio correction": str(self.flipRatio), "Fliping ratio factor": self.flipFac,
                              "Multiple SF scattering probability": self.multiSF,
                              "Neutron wavelength": self.neutronWaveLen}
 
@@ -629,10 +629,10 @@ class DNSScriptElement(BaseScriptElement):
         l("std_path = '{}'".format(parameters["Standard Data"]["Path"]))
         l()
         # data reduction settings
-        l("flipper_bool = {}".format(parameters["Data reduction settings"]["Flipping ratio correction"]))
-        l("flippFac     = '{}'".format(parameters["Data reduction settings"]["Flipping ratio factor"]))
+        l("fliper_bool = {}".format(parameters["Data reduction settings"]["Fliping ratio correction"]))
+        l("flipFac     = '{}'".format(parameters["Data reduction settings"]["Fliping ratio factor"]))
         l("detEffi      = {}".format(self.detEffi))
-        l("flippRatio   = {}".format(self.flippRatio))
+        l("flipRatio   = {}".format(self.flipRatio))
         l("subInst      = {}".format(self.subInst))
         l()
         l("if subInst:")
@@ -658,7 +658,7 @@ class DNSScriptElement(BaseScriptElement):
         l()
         # list of output workspaces x axis units
         l("if parametersSample['Type'] == 'Polycrystal/Amorphous':")
-        l("    xax = {}".format(parameters["Sample"]["Abscissa"]))
+        l("    xax = parametesSample['Abscissa']")
         l("else:")
         l("    xax = ['|Q|']")
         l("xax_str = ', '.join(xax)")
@@ -688,13 +688,13 @@ class DNSScriptElement(BaseScriptElement):
           "                    XAxisUnit=xax_str, Wavelength=wavelength, DataX=dataX_str, MaskAngles=maskAnglesStr,"
           "                    RefWorkspaces=sample_table, Deterotas=deterotas, Normalization=norm,"
           "                    StandardType='vana')")
-        l("    if flippRatio:")
+        l("    if flipRatio:")
         # load standard data for flipping ratio correction
         l("        DNSLoadData(DataPath=std_path, OutputWorkspace=workspaces[files_run], OutputTable='NicrDataTable',"
           "                    XAxisUnit=xax_str, Wavelength=wavelength, DataX=dataX_str, MaskAngles=maskAnglesStr,"
           "                    RefWorkspaces=sample_table, Deterotas=deterotas, Normalization=norm,"
           "                    StandardType='nicr')")
-        l("    if detEffi or flippRatio or subInst:")
+        l("    if detEffi or flipRatio or subInst:")
         # load standard data for instrument background data
         l("        DNSLoadData(DataPath=std_path, OutputWorkspace=workspaces[files_run], "
           "                    OutputTable='BackgroundDataTable', XAxisUnit=xax_str, Wavelength=wavelength, "
@@ -714,18 +714,18 @@ class DNSScriptElement(BaseScriptElement):
           "                           OutputWorkspace=workspaces[files_run], OutputXAxis=xax_str, "
           "                           Polarisations=polarisations, SingleCrystal=singleCrystal)")
         l("        sample_table = mtd[workspaces[files_run]+'_SampleTableVanaCoef']")
-        l("    if flippRatio:")
+        l("    if flipRatio:")
         # save nickel chrome workspaces in table and assign coefficients to sample workspaces
         l("        DNSProcessNiCr(SampleTable=sample_table, NiCrTable=workspaces[files_run]+'_NicrDataTable', "
           "                       OutputWorkspace=workspaces[files_run], XAxisUnits=xax_str, "
-          "                       Polarisations=polarisations, FlippCorrFactor=str(flippFac), "
+          "                       Polarisations=polarisations, FlipCorrFactor=str(flipFac), "
           "                       SingleCrystal=singleCrystal)")
         l("        sample_table = mtd[workspaces[files_run]+'_SampleTableNiCrCoef']")
         l("    if saveToFile:")
         # do reduction/correction and save to file
         l("        DNSProcessSampleData(SampleTable=sample_table, SubtractBackground=str(subInst),"
           "                             SubtractBackgroundFactor=subInstFac, DeteEffiCorrection=str(detEffi),"
-          "                             FlippRatioCorrection=str(flippRatio), SampleParameters=str(parametersSample),"
+          "                             FlipRatioCorrection=str(flipRatio), SampleParameters=str(parametersSample),"
           "                             OutputWorkspace=workspaces[files_run],OutputXAxis=xax_str,"
           "                             Comment=comments[files_run], Omegas=omegas, OutputFileDirectory=fileDirectory,"
           "                             OutputFilePrefix=filePrefix)")
@@ -733,7 +733,7 @@ class DNSScriptElement(BaseScriptElement):
         # do reduction/correction
         l("        DNSProcessSampleData(SampleTable=sample_table, SubtractBackground=str(subInst),"
           "                             SubtractBackgroundFactor=subInstFac, DeteEffiCorrection=str(detEffi),"
-          "                             FlippRatioCorrection=str(flippRatio), SampleParameters=str(parametersSample), "
+          "                             FlipRatioCorrection=str(flipRatio), SampleParameters=str(parametersSample), "
           "                             OutputWorkspace=workspaces[files_run], OutputXAxis=xax_str,"
           "                             Comment=comments[files_run], Omegas=omegas)")
 
