@@ -12,6 +12,18 @@ class DNSProcessNiCr(PythonAlgorithm):
     compute nickel chrome coefficients and add to table
     """
 
+    def __init__(self):
+
+        PythonAlgorithm.__init__(self)
+
+        self.xax = ""
+
+        self.sc = False
+
+        self.suff_norm = ""
+
+        self._m_and_n = False
+
     def _merge_and_normalize(self, ws_group):
         """
         merge and normalize workspace group with all output x axis units

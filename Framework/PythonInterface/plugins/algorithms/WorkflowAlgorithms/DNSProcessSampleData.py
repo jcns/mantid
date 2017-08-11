@@ -15,6 +15,52 @@ class DNSProcessSampleData(PythonAlgorithm):
     Correct and reduce sample data
     """
 
+    def __init__(self):
+        PythonAlgorithm.__init__(self)
+
+        self.bkg_group_sf  = ""
+        self.bkg_group_nsf = ""
+
+        self.comment = ""
+
+        self.data_group_sf  = ""
+        self.data_group_nsf = ""
+
+        self.data_sf_norm  = ""
+        self.data_nsf_norm = ""
+
+        self.data_sf_fcorr  = ""
+        self.data_nsf_fcorr = ""
+
+        self.end_name = ""
+
+        self.keep_events = False
+
+        self.nicr_coef_normalized = ""
+
+        self.omegas_data = []
+
+        self.out_ws_name = ""
+
+        self.out_file_directory = ""
+        self.out_file_prefix    = ""
+
+        self.polarisations = []
+
+        self.rebin_ws_name = ""
+
+        self.sampleParameters = {}
+
+        self.sc = False
+
+        self.suff_norm = ""
+
+        self.vana_coefs_total = ""
+
+        self.xax = ""
+
+        self._m_and_n = False
+
     def _merge_and_normalize(self, ws_group):
         """
         merge and normalize workspace group for all output x axis units
@@ -138,7 +184,7 @@ class DNSProcessSampleData(PythonAlgorithm):
         if flipRatio:
             self.end_name = "_fcorr"
 
-    def _do_correction(self, sample_table, detEffi, flipRatio, subInst, subInstFac):
+    def _do_correction(self, sample_table, detEffi, flipRatio, subInst, subInstFac, omegas):
         """
         correction of sample data
         :param sample_table: table of sample data
@@ -153,7 +199,7 @@ class DNSProcessSampleData(PythonAlgorithm):
         offset = self._get_offset(sample_table)
         # offset to nsf workspace from sf workspace for single crystal samples
         if self.sc:
-            offsetnsf = offset*len(self.omegas)
+            offsetnsf = offset*len(omegas)
 
         while row < sample_table.rowCount() and sample_table.cell("flipper", row) == "ON":
 
@@ -326,20 +372,21 @@ class DNSProcessSampleData(PythonAlgorithm):
         self.data_nsf_norm = Multiply(self.data_group_nsf+self.suff_norm, self.vana_coefs_total,
                                       OutputWorkspace=self.data_group_nsf.replace("group", "vcorr"+self.suff_norm))
 
-        for x in self.xax.split(", "):
-            data_sf_merged  = DNSMergeRuns(self.data_group_sf, x, OutputWorkspace=self.data_group_sf+"_m0")
-            data_nsf_merged = DNSMergeRuns(self.data_group_nsf, x, OutputWorkspace=self.data_group_nsf+"_m0")
-            norm_sf_merged  = DNSMergeRuns(self.data_group_sf.replace("group", "vcorr"+self.suff_norm), x,
-                                           OutputWorkspace=self.data_group_sf.replace(
-                                               "group", "vcorr"+self.suff_norm+"_m_"+x))
-            norm_nsf_merged = DNSMergeRuns(self.data_group_nsf.replace("group", "vcorr"+self.suff_norm), x,
-                                           OutputWorkspace=self.data_group_nsf.replace(
-                                               "group", "vcorr"+self.suff_norm+"_m_"+x))
+        if not self.sc or self.sc and mtd[self.data_group_sf].getNumberOfEntries() >= 2:
+            for x in self.xax.split(", "):
+                data_sf_merged  = DNSMergeRuns(self.data_group_sf, x, OutputWorkspace=self.data_group_sf+"_m0")
+                data_nsf_merged = DNSMergeRuns(self.data_group_nsf, x, OutputWorkspace=self.data_group_nsf+"_m0")
+                norm_sf_merged  = DNSMergeRuns(self.data_group_sf.replace("group", "vcorr"+self.suff_norm), x,
+                                               OutputWorkspace=self.data_group_sf.replace(
+                                                   "group", "vcorr"+self.suff_norm+"_m_"+x))
+                norm_nsf_merged = DNSMergeRuns(self.data_group_nsf.replace("group", "vcorr"+self.suff_norm), x,
+                                               OutputWorkspace=self.data_group_nsf.replace(
+                                                   "group", "vcorr"+self.suff_norm+"_m_"+x))
 
-            Divide(data_sf_merged, norm_sf_merged,
-                   OutputWorkspace=self.data_group_sf.replace("group", "vcorr_m_"+x))
-            Divide(data_nsf_merged, norm_nsf_merged,
-                   OutputWorkspace=self.data_group_nsf.replace("group", "vcorr_m_"+x))
+                Divide(data_sf_merged, norm_sf_merged,
+                       OutputWorkspace=self.data_group_sf.replace("group", "vcorr_m_"+x))
+                Divide(data_nsf_merged, norm_nsf_merged,
+                       OutputWorkspace=self.data_group_nsf.replace("group", "vcorr_m_"+x))
 
         self.data_group_sf  = CloneWorkspace(self.data_group_sf,
                                              OutputWorkspace=self.data_group_sf.replace("group", "vcorr"))
@@ -387,17 +434,20 @@ class DNSProcessSampleData(PythonAlgorithm):
         for i in range(nicr_coor_step2.getNumberOfEntries()):
             nicr_coor_step2.getItem(i).setYUnit(yunit)
 
-        self.data_group_nsf_name = self.data_group_nsf.getName()
+        data_group_nsf_name = self.data_group_nsf.getName()
         self.data_nsf_fcorr = Plus(self.data_group_nsf, nicr_coor_step2,
-                                   OutputWorkspace=self.data_group_nsf_name.replace("vcorr", "fcorr"))
+                                   OutputWorkspace=data_group_nsf_name.replace("vcorr", "fcorr"))
         self.data_nsf_norm  = CloneWorkspace(self.data_nsf_norm,
-                                             OutputWorkspace=self.data_group_nsf_name.replace("vcorr", "fcorr"+
+                                             OutputWorkspace=data_group_nsf_name.replace("vcorr", "fcorr"+
                                                                                                        self.suff_norm))
-        self.data_group_sf_name = self.data_group_sf.getName()
+        data_group_sf_name = self.data_group_sf.getName()
         self.data_sf_fcorr = Minus(self.data_group_sf, nicr_coor_step2,
-                                   OutputWorkspace=self.data_group_sf_name.replace("vcorr", "fcorr"))
+                                   OutputWorkspace=data_group_sf_name.replace("vcorr", "fcorr"))
+        for i in range(20):
+            print("\n")
+        print("data group type: ", type(self.data_group_sf))
         self.data_sf_norm  = CloneWorkspace(self.data_sf_norm.getName(),
-                                            OutputWorkspace=self.data_group_sf_name.replace("vcorr","fcorr"+
+                                            OutputWorkspace=data_group_sf_name.replace("vcorr","fcorr"+
                                                                                                     self.suff_norm))
 
     def _no_flipping_ratio_corr(self):
@@ -595,7 +645,7 @@ class DNSProcessSampleData(PythonAlgorithm):
 
                 result_ws   = mtd[result_name]
 
-                nopix = not self.keep_evens
+                nopix = not self.keep_events
 
                 # convert event multi dimensional workspace to histogram multi dimensional workspace to
                 # divide workspace by norm workspace
@@ -656,11 +706,11 @@ class DNSProcessSampleData(PythonAlgorithm):
                 # save multi dimensional result workspace to file
                 self._save_md_to_file(flip, pol)
 
-                if self.keep_evens:
+                if self.keep_events:
                     sv = mantidplot.plotSlice(result_name_end, normalization=0, colormin=0.01, colormax=1000.0,
                                               colorscalelog=True, limits=[-0.2, 1.4, -3.0, 5.0])
                     sv.setTransparentZeros(True)
-                if not self.keep_evens:
+                if not self.keep_events:
                     SmoothMD(result_name_proj, 3, "Gaussian",
                              OutputWorkspace=self.out_ws_name+"_sc_"+pol+flip+"_smooth")
 
@@ -688,15 +738,15 @@ class DNSProcessSampleData(PythonAlgorithm):
 
         sample_table = mtd[self.getProperty("SampleTable").value]
 
-        subInst    = self.getProperty("SubtractBackground").value
-        subInst    = eval(subInst)
+        subInst = self.getProperty("SubtractBackground").value
+        subInst = eval(subInst)
         if subInst:
             subInstFac = float(self.getProperty("SubtractBackgroundFactor").value)
         else:
             subInstFac = ""
 
-        detEffi    = self.getProperty("DeteEffiCorrection").value
-        detEffi    = eval(detEffi)
+        detEffi = self.getProperty("DeteEffiCorrection").value
+        detEffi = eval(detEffi)
 
         flipRatio = self.getProperty("FlipRatioCorrection").value
         flipRatio = eval(flipRatio)
@@ -707,18 +757,19 @@ class DNSProcessSampleData(PythonAlgorithm):
         self.out_ws_name = self.getProperty("OutputWorkspace").value
         self.xax         = self.getProperty("OutputXAxis").value
         self.comment     = self.getProperty("Comment").value
-        self.omegas      = self.getProperty("Omegas").value.split(", ")
+
+        omegas = self.getProperty("Omegas").value.split(", ")
 
         self.out_file_prefix    = self.getProperty("OutputFilePrefix").value
         self.out_file_directory = self.getProperty("OutputFileDirectory").value
 
         tmp = LoadEmptyInstrument(InstrumentName="DNS")
-        self.instrument = tmp.getInstrument()
+        instrument = tmp.getInstrument()
         DeleteWorkspace(tmp)
 
-        self.suff_norm  = self.instrument.getStringParameter("normws_suffix")[0]
-        self.keep_evens = self.instrument.getBoolParameter("keep_events")[0]
-        self._m_and_n   = self.instrument.getBoolParameter("keep_intermediate_workspace")[0]
+        self.suff_norm  = instrument.getStringParameter("normws_suffix")[0]
+        self.keep_events = instrument.getBoolParameter("keep_events")[0]
+        self._m_and_n   = instrument.getBoolParameter("keep_intermediate_workspace")[0]
 
         if self.sampleParameters["Type"] == "Single Crystal":
             self.sc = True
@@ -733,7 +784,7 @@ class DNSProcessSampleData(PythonAlgorithm):
         # workspace to rebin to
         self.rebin_ws_name = self.out_ws_name+"_data_"+sample_table.cell("polarisation", 0)+"_sf"+self.end_name+"_m_"
 
-        self._do_correction(sample_table, detEffi, flipRatio, subInst, subInstFac)
+        self._do_correction(sample_table, detEffi, flipRatio, subInst, subInstFac, omegas)
 
         if self.sampleParameters["Type"] == "Polycrystal/Amorphous":
             if self.sampleParameters["Separation"] == "XYZ":
@@ -749,6 +800,22 @@ class DNSProcessSampleData(PythonAlgorithm):
             for pol in self.polarisations:
                 self._save_to_file("_data_"+pol+"_sf"+self.end_name+"_m_", flip="_sf", pol="_"+pol)
                 self._save_to_file("_data_"+pol+"_nsf"+self.end_name+"_m_", flip="_nsf", pol="_"+pol)
+
+        print('out file dir: ', type(self.out_file_directory))
+        print('bkg group: ', type(self.bkg_group_sf))
+        print('bkg group: ', type(self.bkg_group_nsf))
+        print('comment: ', type(self.comment))
+        print('data groups: ', type(self.data_group_sf))
+        print('data groups: ', type(self.data_group_nsf))
+        print('data norm: ', type(self.data_sf_norm))
+        print('data norm: ', type(self.data_nsf_norm))
+        print('data fcorr: ', type(self.data_sf_fcorr))
+        print('data fcorr: ', type(self.data_nsf_fcorr))
+        print('keep events: ', type(self.keep_events))
+        print('nicr coef normalized: ', type(self.nicr_coef_normalized))
+        print('omegas_data: ', type(self.omegas_data))
+        print('polarisations: ', type(self.polarisations))
+        print('vana coefs total: ', type(self.vana_coefs_total))
 
 
 AlgorithmFactory.subscribe(DNSProcessSampleData)

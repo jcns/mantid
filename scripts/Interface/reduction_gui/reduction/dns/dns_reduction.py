@@ -658,10 +658,14 @@ class DNSScriptElement(BaseScriptElement):
         l()
         # list of output workspaces x axis units
         l("if parametersSample['Type'] == 'Polycrystal/Amorphous':")
-        l("    xax = parametesSample['Abscissa']")
+        l("    xax = parametersSample['Abscissa']")
+        l("    xax = eval(xax)")
+        l("    print(xax)")
+        l("    print(type(xax))")
         l("else:")
         l("    xax = ['|Q|']")
         l("xax_str = ', '.join(xax)")
+        l("print(xax_str)")
         # boolean for single crystal sample
         l("if parametersSample['Type'] == 'Single Crystal':")
         l("    singleCrystal = 'True'")
