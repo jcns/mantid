@@ -16,13 +16,11 @@ class DNSProcessNiCr(PythonAlgorithm):
 
         PythonAlgorithm.__init__(self)
 
+        # output x-axis units
         self.xax = ""
 
-        self.sc = False
-
+        # suffix for norm workspaces
         self.suff_norm = ""
-
-        self._m_and_n = False
 
     def _merge_and_normalize(self, ws_group):
         """
@@ -65,8 +63,8 @@ class DNSProcessNiCr(PythonAlgorithm):
 
         flipFac = self.getProperty("FlipCorrFactor").value
 
-        sc      = self.getProperty("SingleCrystal").value
-        self.sc = eval(sc)
+        sc = self.getProperty("SingleCrystal").value
+        sc = eval(sc)
 
         tmp = LoadEmptyInstrument(InstrumentName="DNS")
         instrument = tmp.getInstrument()
@@ -74,7 +72,7 @@ class DNSProcessNiCr(PythonAlgorithm):
 
         self.suff_norm = instrument.getStringParameter("normws_suffix")[0]
         tol            = float(instrument.getStringParameter("two_theta_tolerance")[0])
-        self._m_and_n  = instrument.getBoolParameter("keep_intermediate_workspace")[0]
+        m_and_n  = instrument.getBoolParameter("keep_intermediate_workspace")[0]
 
         # add columns for nickel chrome coefficients
         new_sample_table = sample_table.clone(OutputWorkspace=out_ws_name+"_SampleTableNiCrCoef")
@@ -133,7 +131,7 @@ class DNSProcessNiCr(PythonAlgorithm):
                 nicr_group_nsf = nicr_group_nsf.replace("raw", "")
 
                 # merge and normalize nickel chrome
-                if self._m_and_n and not self.sc:
+                if m_and_n and not sc:
                     self._merge_and_normalize(nicr_group_sf)
                     self._merge_and_normalize(nicr_group_nsf)
 

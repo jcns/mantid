@@ -23,37 +23,52 @@ class DNSLoadData(PythonAlgorithm):
     def __init__(self):
         PythonAlgorithm.__init__(self)
 
+        # name of the output workspace
         self.out_ws_name = ""
 
+        # list of angles of the detectors to be masked
         self.mask_angles = []
 
+        # parameters of the sample
         self.sample_parameters = {}
 
+        # bool, true if sample is single crystal
         self.sc = False
 
+        # deterotas from sample data (load standard data)
         self.deterotasIn = []
 
+        # suffix of the normalization workspaces
         self._suff_norm = ""
 
+        # two theta tolerance
         self.tol = 0.0
 
+        # bool, true if data should be merged and normalized
         self._m_and_n = False
 
+        # list of workspaces, to be used for DNS reduction
         self._use_ws = []
 
+        # output x axis units
         self.xax = ""
 
-        self.std_type = ""
-
+        # name of normalization
         self._norm = ""
 
-        self._data_files = []
-
-        self._data_workspaces = []
-
+        # list of deterotas from sample data (load sample data)
         self._deterota = []
 
+        # list of omegas from sample data (sample data is single crystal)
         self.omegas = []
+
+        # dictionaries for all polarisations and spin flip and non spin flip
+        self.x_sf  = {}
+        self.x_nsf = {}
+        self.y_sf  = {}
+        self.y_nsf = {}
+        self.z_sf  = {}
+        self.z_nsf = {}
 
     def _extract_norm_workspace(self, ws_group):
         """
@@ -101,9 +116,10 @@ class DNSLoadData(PythonAlgorithm):
         :param ei: ei for loaded workspace
         :param dataX: x data if wavelength is different
         """
-        self._data_files      = files.split(", ")
+        data_files = files.split(", ")
+        data_workspaces  = []
 
-        for f in self._data_files:
+        for f in data_files:
             ws_name   = os.path.splitext(f)[0]
             file_path = os.path.join(data_path, f)
             LoadDNSLegacy(Filename=file_path, OutputWorkspace=ws_name, Normalization="no")
@@ -113,11 +129,10 @@ class DNSLoadData(PythonAlgorithm):
                 AddSampleLog(ws_name, "Ei",         str(ei),         "Number", "meV")
                 for i in range(mtd[ws_name].getNumberHistograms()):
                     mtd[ws_name].setX(i, dataX)
-
-            self._data_workspaces.append(ws_name)
+            data_workspaces.append(ws_name)
 
         # save all deterotas and omeagas to group workspaces
-        for wsp_name in self._data_workspaces:
+        for wsp_name in data_workspaces:
             angle = mtd[wsp_name].getRun().getProperty("deterota").value
             omega = mtd[wsp_name].getRun().getProperty("omega").value
             omega = round(omega, 1)
@@ -128,9 +143,9 @@ class DNSLoadData(PythonAlgorithm):
             if not self._is_in_list(self._deterota, angle, self.tol):
                 self._deterota.append(angle)
 
-        self._group_ws(self._data_workspaces, self._deterota, self.omegas)
+        self._group_ws(data_workspaces, self._deterota, self.omegas)
 
-    def _load_ws_standard(self, data_path, ref_ws, wavelength, ei, dataX):
+    def _load_ws_standard(self, data_path, ref_ws, wavelength, ei, dataX, std_type):
         """
         load standard data and save into workspaces
         :param data_path: path to standard data
@@ -145,7 +160,7 @@ class DNSLoadData(PythonAlgorithm):
         for f in os.listdir(data_path):
             full_file_name = os.path.join(data_path, f)
 
-            if os.path.isfile(full_file_name) and self.std_type in full_file_name:
+            if os.path.isfile(full_file_name) and std_type in full_file_name:
                 ws_name = os.path.splitext(f)[0]
 
                 if not mtd.doesExist(ws_name):
@@ -184,12 +199,9 @@ class DNSLoadData(PythonAlgorithm):
 
         for wsp_name in sample_ws:
             angle = mtd[wsp_name].getRun().getProperty("deterota").value
-            #if not self._is_in_list(self.deterota, angle, self.tol):
             if not self._is_in_list(deterota, angle, self.tol):
-                #self.deterota.append(angle)
                 deterota.append(angle)
 
-        #self._group_ws(calibration_workspaces, self.deterota)
         self._group_ws(calibration_workspaces, deterota)
 
     def _group_ws(self, ws, deterota, omegas=""):
@@ -552,7 +564,6 @@ class DNSLoadData(PythonAlgorithm):
 
         self.out_ws_name = self.getProperty("OutputWorkspace").value
         self.xax         = self.getProperty("XAxisUnit").value
-        print('xax: ', type(self.xax))
 
         ref_ws     = self.getProperty("RefWorkspaces").value
         table_name = self.out_ws_name+"_"+self.getProperty("OutputTable").value
@@ -587,11 +598,9 @@ class DNSLoadData(PythonAlgorithm):
         else:
             self.deterotasIn = []
 
-        self.std_type = self.getProperty("StandardType").value
-        print('std type : ', type(self.std_type))
+        std_type = self.getProperty("StandardType").value
 
         self._norm = self.getProperty("Normalization").value
-        print('norm: ', type(self._norm))
 
         tmp = LoadEmptyInstrument(InstrumentName="DNS")
         instrument = tmp.getInstrument()
@@ -612,7 +621,7 @@ class DNSLoadData(PythonAlgorithm):
             else:
                 omegas = ""
         else:
-            self._load_ws_standard(data_path, ref_ws, wavelength, ei, dataX)
+            self._load_ws_standard(data_path, ref_ws, wavelength, ei, dataX, std_type)
             deterotas = ""
             omegas    = ""
 

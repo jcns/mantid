@@ -67,6 +67,73 @@ class DNSScriptElement(BaseScriptElement):
 
     XML_TAG = "DNSReduction"
 
+    def __init__(self):
+        BaseScriptElement.__init__(self)
+
+        # facility and instrument name
+        self.facility_name   = ""
+        self.instrument_name = ""
+
+        # sample data parameters
+        self.sampleDataPath = ""
+        self.filePrefix     = ""
+        self.fileSuffix     = ""
+
+        # runs of sample data
+        self.dataRuns = []
+
+        # angles of detectors to be mask
+        self.maskAngles = []
+
+        # save data to file
+        self.saveToFile = self.DEF_SaveToFile
+        self.outDir     = ""
+        self.outPrefix  = ""
+
+        # path to standard data directory
+        self.standardDataPath = ""
+
+        # reduction settings
+        self.detEffi        = self.DEF_DetEffi
+        self.sumVan         = self.DEF_SumVan
+        self.subInst        = self.DEF_SubInst
+        self.subFac         = self.DEF_SubFac
+        self.flipRatio     = self.DEF_FlipRatio
+        self.flipFac       = self.DEF_FlipFac
+        self.multiSF        = self.DEF_MultiSF
+        self.normalise      = self.DEF_Normalise
+        self.neutronWaveLen = self.DEF_NeutWaveLen
+
+        # sample parameter type
+        self.out = self.DEF_Output
+
+        # parameters for polycrystal/amorph
+        self.outAxisQ      = self.DEF_OutAxisQ
+        self.outAxisD      = self.DEF_OutAxisD
+        self.outAxis2Theta = self.DEF_OutAxis2Theta
+        self.separation    = self.DEF_Separation
+
+        # parameters for single crystal
+        self.omegaOffset  = self.DEF_OmegaOffset
+        self.latticeA     = self.DEF_LatticeA
+        self.latticeB     = self.DEF_LatticeB
+        self.latticeC     = self.DEF_LatticeC
+        self.latticeAlpha = self.DEF_LatticeAlpha
+        self.latticeBeta  = self.DEF_LatticeBeta
+        self.latticeGamma = self.DEF_LatticeGamma
+        self.scatterU1    = self.DEF_ScatterU1
+        self.scatterU2    = self.DEF_ScatterU2
+        self.scatterU3    = self.DEF_ScatterU3
+        self.scatterV1    = self.DEF_ScatterV1
+        self.scatterV2    = self.DEF_ScatterV2
+        self.scatterV3    = self.DEF_ScatterV3
+
+        tmp = api.LoadEmptyInstrument(InstrumentName="DNS")
+        instrument = tmp.getInstrument()
+        api.DeleteWorkspace(tmp)
+
+        self.suff_norm = instrument.getStringParameter("normws_suffix")[0]
+
     def reset(self):
         """
         Declare variables to reset the view
@@ -592,7 +659,7 @@ class DNSScriptElement(BaseScriptElement):
 
         parameters = self._parameter_dict()
 
-        # genareted script
+        # generated script
         script = [""]
 
         def l(line=""):

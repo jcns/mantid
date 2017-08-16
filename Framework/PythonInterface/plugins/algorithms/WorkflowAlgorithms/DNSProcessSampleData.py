@@ -18,47 +18,66 @@ class DNSProcessSampleData(PythonAlgorithm):
     def __init__(self):
         PythonAlgorithm.__init__(self)
 
+        # background groups for this sample data
         self.bkg_group_sf  = ""
         self.bkg_group_nsf = ""
 
+        # comment for end workspaces
         self.comment = ""
 
+        # data groups for this sample data
         self.data_group_sf  = ""
         self.data_group_nsf = ""
 
+        # data norm groups for this sample data
         self.data_sf_norm  = ""
         self.data_nsf_norm = ""
 
+        # data groups for this corrected sample data
         self.data_sf_fcorr  = ""
         self.data_nsf_fcorr = ""
 
+        # name of the corrected sample data workspaces
         self.end_name = ""
 
+        # bool, if true plot event workspace for single crystal sample
         self.keep_events = False
 
+        # workspace group of normalized nickel chrome coefficients
         self.nicr_coef_normalized = ""
 
+        # list of omegas in this sample data
         self.omegas_data = []
 
+        # name of the output workspace
         self.out_ws_name = ""
 
+        # directory and prefix of the file to be saved
         self.out_file_directory = ""
         self.out_file_prefix    = ""
 
+        # list of the polarisations of this sample data
         self.polarisations = []
 
+        # name of the workspace, to rebin other workspaces to
         self.rebin_ws_name = ""
 
+        # dictionary of the sample data parameters
         self.sampleParameters = {}
 
+        # Bool, if true sample data is single crystal
         self.sc = False
 
+        # suffix for norm workspaces
         self.suff_norm = ""
 
+        # name of the total vanadium coefficients
         self.vana_coefs_total = ""
 
+        # output x-axis units
         self.xax = ""
 
+        # bool, if true merge and normalize data
         self._m_and_n = False
 
     def _merge_and_normalize(self, ws_group):
@@ -443,9 +462,6 @@ class DNSProcessSampleData(PythonAlgorithm):
         data_group_sf_name = self.data_group_sf.getName()
         self.data_sf_fcorr = Minus(self.data_group_sf, nicr_coor_step2,
                                    OutputWorkspace=data_group_sf_name.replace("vcorr", "fcorr"))
-        for i in range(20):
-            print("\n")
-        print("data group type: ", type(self.data_group_sf))
         self.data_sf_norm  = CloneWorkspace(self.data_sf_norm.getName(),
                                             OutputWorkspace=data_group_sf_name.replace("vcorr","fcorr"+
                                                                                                     self.suff_norm))
@@ -800,22 +816,6 @@ class DNSProcessSampleData(PythonAlgorithm):
             for pol in self.polarisations:
                 self._save_to_file("_data_"+pol+"_sf"+self.end_name+"_m_", flip="_sf", pol="_"+pol)
                 self._save_to_file("_data_"+pol+"_nsf"+self.end_name+"_m_", flip="_nsf", pol="_"+pol)
-
-        print('out file dir: ', type(self.out_file_directory))
-        print('bkg group: ', type(self.bkg_group_sf))
-        print('bkg group: ', type(self.bkg_group_nsf))
-        print('comment: ', type(self.comment))
-        print('data groups: ', type(self.data_group_sf))
-        print('data groups: ', type(self.data_group_nsf))
-        print('data norm: ', type(self.data_sf_norm))
-        print('data norm: ', type(self.data_nsf_norm))
-        print('data fcorr: ', type(self.data_sf_fcorr))
-        print('data fcorr: ', type(self.data_nsf_fcorr))
-        print('keep events: ', type(self.keep_events))
-        print('nicr coef normalized: ', type(self.nicr_coef_normalized))
-        print('omegas_data: ', type(self.omegas_data))
-        print('polarisations: ', type(self.polarisations))
-        print('vana coefs total: ', type(self.vana_coefs_total))
 
 
 AlgorithmFactory.subscribe(DNSProcessSampleData)

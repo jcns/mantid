@@ -15,12 +15,16 @@ class DNSProcessVanadium(PythonAlgorithm):
     def __init__(self):
         PythonAlgorithm.__init__(self)
 
+        # output x-axis units
         self.xax = ""
 
+        # bool, if true sample data is single crystal
         self.sc = False
 
+        # suffix for norm workspaces
         self.suff_norm = ""
 
+        # bool, if true merge and normalize data
         self._m_and_n = False
 
     def _merge_and_normalize(self, ws_group):
